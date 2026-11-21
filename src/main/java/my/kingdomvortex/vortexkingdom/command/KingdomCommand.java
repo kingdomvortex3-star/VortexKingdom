@@ -1,6 +1,8 @@
+
 package my.kingdomvortex.vortexkingdom.command;
 
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
+import my.kingdomvortex.vortexkingdom.manager.KingdomLeaderboardManager.LeaderboardType;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -106,16 +108,24 @@ public final class KingdomCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        var type = my.kingdomvortex.vortexkingdom.manager
-                .KingdomLeaderboardManager.LeaderboardType.LEVEL;
-
-        if (args.length >= 2) {
-            type = my.kingdomvortex.vortexkingdom.manager
-                    .KingdomLeaderboardManager.LeaderboardType
-                    .fromString(args[1]);
+        if (!player.hasPermission("vortexkingdom.use")) {
+            player.sendMessage(
+                    PREFIX + "§cKamu tidak memiliki izin menggunakan Kingdom."
+            );
+            return;
         }
 
-        plugin.getLeaderboardGUIManager().open(player, type, 0);
+        LeaderboardType type = LeaderboardType.LEVEL;
+
+        if (args.length >= 2) {
+            type = LeaderboardType.fromString(args[1]);
+        }
+
+        plugin.getLeaderboardGUIManager().open(
+                player,
+                type,
+                0
+        );
     }
 
     private void reloadPlugin(CommandSender sender) {
@@ -208,4 +218,4 @@ public final class KingdomCommand implements CommandExecutor, TabCompleter {
 
         return suggestions;
     }
-        }
+}
