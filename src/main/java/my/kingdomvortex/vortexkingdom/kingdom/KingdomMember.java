@@ -1,6 +1,8 @@
 
 package my.kingdomvortex.vortexkingdom.kingdom;
 
+import java.util.UUID;
+
 public final class KingdomMember {
 
     public enum Role {
@@ -44,6 +46,14 @@ public final class KingdomMember {
 
     public String getPlayerUuid() {
         return playerUuid;
+    }
+
+    public UUID getPlayerUniqueId() {
+        try {
+            return UUID.fromString(playerUuid);
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     public String getPlayerName() {
