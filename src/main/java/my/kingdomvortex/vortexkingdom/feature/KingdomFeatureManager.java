@@ -1,4 +1,3 @@
-
 package my.kingdomvortex.vortexkingdom.feature;
 
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
@@ -163,13 +162,19 @@ public final class KingdomFeatureManager {
                     }
 
                     double x = result.getDouble("home_x");
-                    if (result.wasNull()) return Optional.empty();
+                    if (result.wasNull()) {
+                        return Optional.empty();
+                    }
 
                     double y = result.getDouble("home_y");
-                    if (result.wasNull()) return Optional.empty();
+                    if (result.wasNull()) {
+                        return Optional.empty();
+                    }
 
                     double z = result.getDouble("home_z");
-                    if (result.wasNull()) return Optional.empty();
+                    if (result.wasNull()) {
+                        return Optional.empty();
+                    }
 
                     World world = plugin.getServer().getWorld(worldName);
 
@@ -416,4 +421,4 @@ public final class KingdomFeatureManager {
                         + ": " + exception.getMessage()
         );
     }
-}
+                        }
