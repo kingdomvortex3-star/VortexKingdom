@@ -34,10 +34,10 @@ public final class ExpRewardManager {
         String normalizedSource = source.trim()
                 .toLowerCase(Locale.ROOT);
 
-        String path = "sources." + normalizedSource + ".";
+        String configPath = "sources." + normalizedSource + ".";
 
         if (!plugin.getExpConfig().getBoolean(
-                path + "enabled", false
+                configPath + "enabled", false
         )) {
             return 0;
         }
@@ -61,15 +61,18 @@ public final class ExpRewardManager {
 
         Kingdom kingdom = optional.get();
 
-        if (kingdom.getLevel() >=
-                plugin.getLevelManager().getMaxLevel()) {
+        int oldLevel = kingdom.getLevel();
+        int kingdomId = kingdom.getId();
+        String kingdomName = kingdom.getName();
+
+        if (oldLevel >= plugin.getLevelManager().getMaxLevel()) {
             return 0;
         }
 
         int cooldown = Math.max(
                 0,
                 plugin.getExpConfig().getInt(
-                        path + "cooldown", 0
+                        configPath + "cooldown", 0
                 )
         );
 
@@ -82,6 +85,7 @@ public final class ExpRewardManager {
         }
 
         long now = System.currentTimeMillis();
+        long awarded = 0;
 
         try {
             ZoneId zone = ZoneId.of(
@@ -96,12 +100,13 @@ public final class ExpRewardManager {
             Connection connection =
                     plugin.getDatabaseManager().getConnection();
 
+            /*
+             * Semua operasi database dalam transaksi berada
+             * di dalam lock koneksi yang sama.
+             */
             synchronized (connection) {
                 boolean previousAutoCommit =
                         connection.getAutoCommit();
-
-                long awarded = 0;
-                boolean committed = false;
 
                 try {
                     connection.setAutoCommit(false);
@@ -211,14 +216,20 @@ public final class ExpRewardManager {
                     }
 
                     /*
-                     * Tambahkan EXP tanpa mengirim notifikasi.
-                     * Notifikasi akan dijalankan setelah commit.
+                     * Gunakan kingdomId secara langsung.
+                     * Tidak ada pemanggilan KingdomManager
+                     * saat koneksi sedang dikunci.
+                     *
+                     * Notifikasi level-up dimatikan dahulu.
                      */
-                    if (!plugin.getLevelManager().addExp(
-                            player,
+                    boolean expAdded = plugin.getLevelManager().addExp(
+                            kingdomId,
+                            kingdomName,
                             reward,
                             false
-                    )) {
+                    );
+
+                    if (!expAdded) {
                         connection.rollback();
                         return 0;
                     }
@@ -237,9 +248,12 @@ public final class ExpRewardManager {
                             now
                     );
 
+                    /*
+                     * EXP, daily limit, activity, dan cooldown
+                     * disimpan sebagai satu transaksi.
+                     */
                     connection.commit();
 
-                    committed = true;
                     awarded = reward;
 
                 } catch (Exception exception) {
@@ -254,21 +268,18 @@ public final class ExpRewardManager {
                 } finally {
                     connection.setAutoCommit(previousAutoCommit);
                 }
+            }
 
-                if (!committed || awarded <= 0) {
-                    return 0;
-                }
-
-                /*
-                 * Ambil level terbaru setelah commit.
-                 * Notifikasi tidak dikirim jika transaksi gagal.
-                 */
+            /*
+             * Lock koneksi sudah dilepas di sini.
+             * Baru sekarang baca ulang Kingdom untuk notifikasi.
+             */
+            if (awarded > 0) {
                 Optional<Kingdom> updatedKingdom =
                         plugin.getKingdomManager()
                                 .getKingdomByPlayer(player);
 
                 if (updatedKingdom.isPresent()) {
-                    int oldLevel = kingdom.getLevel();
                     int newLevel = updatedKingdom.get().getLevel();
 
                     if (newLevel > oldLevel) {
@@ -279,9 +290,9 @@ public final class ExpRewardManager {
                         );
                     }
                 }
-
-                return awarded;
             }
+
+            return awarded;
 
         } catch (Exception exception) {
             plugin.getLogger().severe(
@@ -300,8 +311,12 @@ public final class ExpRewardManager {
             String actionKey
     ) {
         if (!source.equals("boss-kill")) {
-            return plugin.getExpConfig().getLong(
-                    "sources." + source + ".exp", 0
+            return Math.max(
+                    0,
+                    plugin.getExpConfig().getLong(
+                            "sources." + source + ".exp",
+                            0
+                    )
             );
         }
 
