@@ -3,7 +3,6 @@ package my.kingdomvortex.vortexkingdom.listener;
 
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
 import my.kingdomvortex.vortexkingdom.gui.KingdomGUIManager;
-import my.kingdomvortex.vortexkingdom.gui.KingdomFeatureGUIManager;
 import my.kingdomvortex.vortexkingdom.gui.KingdomMenuHolder;
 import my.kingdomvortex.vortexkingdom.kingdom.KingdomMember.Role;
 import my.kingdomvortex.vortexkingdom.manager.KingdomManager;
@@ -22,6 +21,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,7 +39,6 @@ public final class KingdomGUIListener implements Listener {
 
     private final VortexKingdom plugin;
     private final KingdomGUIManager gui;
-    private final KingdomFeatureGUIManager featureGUI;
     private final KingdomManager kingdoms;
 
     private final Set<UUID> creationRequests =
@@ -47,12 +46,10 @@ public final class KingdomGUIListener implements Listener {
 
     public KingdomGUIListener(
             VortexKingdom plugin,
-            KingdomGUIManager gui,
-            KingdomFeatureGUIManager featureGUI
+            KingdomGUIManager gui
     ) {
         this.plugin = plugin;
         this.gui = gui;
-        this.featureGUI = featureGUI;
         this.kingdoms = plugin.getKingdomManager();
     }
 
@@ -90,8 +87,6 @@ public final class KingdomGUIListener implements Listener {
             case MEMBER_ACTIONS -> handleMemberActions(player, holder, slot);
             case INVITATIONS -> handleInvitations(player, event, slot);
             case CONFIRMATION -> handleConfirmation(player, holder, slot);
-            default -> {
-            }
         }
     }
 
@@ -132,22 +127,13 @@ public final class KingdomGUIListener implements Listener {
             }
 
             case 16 -> {
-                if (hasKingdom) {
-                    featureGUI.openHome(player);
-                } else {
-                    player.sendMessage(
-                            PREFIX + "§cKamu belum memiliki Kingdom."
-                    );
-                }
+                player.closeInventory();
+                player.sendMessage(
+                        PREFIX + "§eFitur Kingdom Home belum tersedia."
+                );
             }
 
-            case 22 -> {
-                if (hasKingdom) {
-                    featureGUI.openSettings(player);
-                } else {
-                    startCreation(player, false);
-                }
-            }
+            case 22 -> startCreation(player, hasKingdom);
 
             case 38 -> plugin.getLeaderboardGUIManager().open(
                     player,
