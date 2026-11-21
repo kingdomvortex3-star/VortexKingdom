@@ -3,9 +3,12 @@ package my.kingdomvortex.vortexkingdom;
 
 import my.kingdomvortex.vortexkingdom.command.KingdomCommand;
 import my.kingdomvortex.vortexkingdom.database.DatabaseManager;
+import my.kingdomvortex.vortexkingdom.gui.KingdomGUIManager;
 import my.kingdomvortex.vortexkingdom.level.ExpRewardManager;
 import my.kingdomvortex.vortexkingdom.level.KingdomLevelManager;
+import my.kingdomvortex.vortexkingdom.listener.KingdomGUIListener;
 import my.kingdomvortex.vortexkingdom.manager.KingdomManager;
+
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.command.PluginCommand;
@@ -21,6 +24,7 @@ public final class VortexKingdom extends JavaPlugin {
     private KingdomManager kingdomManager;
     private KingdomLevelManager levelManager;
     private ExpRewardManager expRewardManager;
+    private KingdomGUIManager guiManager;
 
     private FileConfiguration expConfig;
     private File expFile;
@@ -37,12 +41,18 @@ public final class VortexKingdom extends JavaPlugin {
             databaseManager.connect();
 
             kingdomManager = new KingdomManager(
-                    this, databaseManager
+                    this,
+                    databaseManager
             );
 
             levelManager = new KingdomLevelManager(this);
-
             expRewardManager = new ExpRewardManager(this);
+            guiManager = new KingdomGUIManager(this);
+
+            getServer().getPluginManager().registerEvents(
+                    new KingdomGUIListener(this, guiManager),
+                    this
+            );
 
             registerCommands();
 
@@ -53,15 +63,23 @@ public final class VortexKingdom extends JavaPlugin {
 
             exception.printStackTrace();
 
+            if (databaseManager != null) {
+                databaseManager.disconnect();
+            }
+
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
 
-        getLogger().info("VortexKingdom successfully enabled!");
+        getLogger().info("==================================");
+        getLogger().info("       VORTEX KINGDOM");
+        getLogger().info("==================================");
         getLogger().info("Database: Connected");
         getLogger().info("Kingdom Manager: Loaded");
         getLogger().info("Level Manager: Loaded");
         getLogger().info("EXP Reward Manager: Loaded");
+        getLogger().info("GUI Manager: Loaded");
+        getLogger().info("==================================");
     }
 
     private void loadExpConfig() {
@@ -99,6 +117,7 @@ public final class VortexKingdom extends JavaPlugin {
             databaseManager.disconnect();
         }
 
+        getLogger().info("VortexKingdom disabled.");
         instance = null;
     }
 
@@ -120,6 +139,10 @@ public final class VortexKingdom extends JavaPlugin {
 
     public ExpRewardManager getExpRewardManager() {
         return expRewardManager;
+    }
+
+    public KingdomGUIManager getGuiManager() {
+        return guiManager;
     }
 
     public FileConfiguration getExpConfig() {
