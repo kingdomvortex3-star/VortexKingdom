@@ -44,12 +44,8 @@ public final class KingdomPlaceholder extends PlaceholderExpansion {
             OfflinePlayer player,
             String params
     ) {
-        if (player == null || player.getUniqueId() == null) {
+        if (player == null || params == null || params.isBlank()) {
             return "";
-        }
-
-        if (params == null || params.isBlank()) {
-            return null;
         }
 
         String key = params.toLowerCase(Locale.ROOT);
@@ -65,19 +61,17 @@ public final class KingdomPlaceholder extends PlaceholderExpansion {
         Kingdom kingdom = optional.get();
 
         int level = kingdom.getLevel();
-        long currentExp = kingdom.getExperience();
-        long totalExp = kingdom.getTotalExperience();
+        int members = plugin.getKingdomManager()
+                .getMemberCount(kingdom.getId());
+
+        int maxMembers = plugin.getKingdomManager()
+                .getMaxMembers(level);
 
         Optional<KingdomMember> member =
                 plugin.getKingdomManager()
                         .getMember(player.getUniqueId());
 
         return switch (key) {
-
-            // ==========================================
-            // KINGDOM IDENTITY
-            // ==========================================
-
             case "name" ->
                     kingdom.getName();
 
@@ -91,18 +85,14 @@ public final class KingdomPlaceholder extends PlaceholderExpansion {
                     member.map(value -> value.getRole().name())
                             .orElse("NONE");
 
-            // ==========================================
-            // LEVEL AND EXPERIENCE
-            // ==========================================
-
             case "level" ->
                     String.valueOf(level);
 
             case "exp" ->
-                    String.valueOf(currentExp);
+                    String.valueOf(kingdom.getExperience());
 
             case "total_exp" ->
-                    String.valueOf(totalExp);
+                    String.valueOf(kingdom.getTotalExperience());
 
             case "required_exp" ->
                     String.valueOf(
@@ -124,43 +114,17 @@ public final class KingdomPlaceholder extends PlaceholderExpansion {
                                     .getProgress(player.getUniqueId())
                     );
 
-            // ==========================================
-            // MEMBERS
-            // ==========================================
-
             case "members" ->
-                    String.valueOf(
-                            plugin.getKingdomManager()
-                                    .getMemberCount(kingdom.getId())
-                    );
+                    String.valueOf(members);
 
             case "max_members" ->
-                    String.valueOf(
-                            plugin.getKingdomManager()
-                                    .getMaxMembers(level)
-                    );
+                    String.valueOf(maxMembers);
 
             case "members_left" ->
-                    String.valueOf(
-                            Math.max(
-                                    0,
-                                    plugin.getKingdomManager()
-                                            .getMaxMembers(level)
-                                            - plugin.getKingdomManager()
-                                            .getMemberCount(kingdom.getId())
-                            )
-                    );
-
-            // ==========================================
-            // STATISTICS
-            // ==========================================
+                    String.valueOf(Math.max(0, maxMembers - members));
 
             case "kills" ->
                     String.valueOf(kingdom.getTotalKills());
-
-            // ==========================================
-            // KINGDOM SETTINGS
-            // ==========================================
 
             case "pvp" ->
                     kingdom.isPvpEnabled()
@@ -174,9 +138,8 @@ public final class KingdomPlaceholder extends PlaceholderExpansion {
         };
     }
 
-    private String getNoKingdomValue(String params) {
-        return switch (params) {
-
+    private String getNoKingdomValue(String key) {
+        return switch (key) {
             case "level",
                  "exp",
                  "total_exp",
