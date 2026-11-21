@@ -1,0 +1,36 @@
+
+settings:
+  debug: false
+  language: id
+  autosave-interval: 300
+
+database:
+  type: SQLITE
+  file: kingdoms.db
+  busy-timeout: 5000
+  journal-mode: WAL
+
+kingdom:
+  minimum-name-length: 3
+  maximum-name-length: 16
+  maximum-level: 100
+  starting-level: 1
+  starting-exp: 0
+  starting-capacity: 5
+  capacity-per-level: 1
+  one-kingdom-per-player: true
+
+invitation:
+  expiration-seconds: 120
+  maximum-pending-invitations: 10
+
+home:
+  enabled: true
+  teleport-delay: 3
+  prevent-combat-teleport: true
+
+exp:
+  enabled: true
+  daily-limit: 10000
+  anti-farming: true
+  cooldown-seconds: 3
