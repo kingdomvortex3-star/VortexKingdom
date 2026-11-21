@@ -61,9 +61,6 @@ public final class KingdomLeaderboardManager {
     ) {
     }
 
-    /**
-     * Mengambil leaderboard berdasarkan kategori.
-     */
     public List<LeaderboardEntry> getTop(
             LeaderboardType type,
             int limit
@@ -93,7 +90,9 @@ public final class KingdomLeaderboardManager {
                     k.level,
                     k.total_experience,
                     k.total_kills
-                ORDER BY %s DESC, k.name COLLATE NOCASE ASC, k.id ASC
+                ORDER BY %s DESC,
+                         k.name COLLATE NOCASE ASC,
+                         k.id ASC
                 LIMIT ?
                 """.formatted(type.getColumn());
 
@@ -149,10 +148,6 @@ public final class KingdomLeaderboardManager {
         return getTop(LeaderboardType.KILLS, limit);
     }
 
-    /**
-     * Mendapatkan posisi Kingdom pada kategori tertentu.
-     * Mengembalikan 0 jika Kingdom tidak ditemukan.
-     */
     public int getRank(
             int kingdomId,
             LeaderboardType type
@@ -247,9 +242,6 @@ public final class KingdomLeaderboardManager {
         }
     }
 
-    /**
-     * Mengambil data Kingdom pada leaderboard.
-     */
     public LeaderboardEntry getKingdomEntry(
             int kingdomId,
             LeaderboardType type
@@ -289,6 +281,8 @@ public final class KingdomLeaderboardManager {
                     plugin.getDatabaseManager().getConnection();
 
             synchronized (connection) {
+                LeaderboardEntry entry;
+
                 try (PreparedStatement statement =
                              connection.prepareStatement(sql)) {
 
@@ -299,11 +293,23 @@ public final class KingdomLeaderboardManager {
                             return null;
                         }
 
-                        int rank = getRank(kingdomId, type);
-
-                        return mapEntry(result, type, rank);
+                        entry = mapEntry(result, type, 0);
                     }
                 }
+
+                int rank = getRank(kingdomId, type);
+
+                return new LeaderboardEntry(
+                        entry.kingdomId(),
+                        entry.kingdomName(),
+                        entry.ownerUuid(),
+                        entry.level(),
+                        entry.totalExperience(),
+                        entry.totalKills(),
+                        entry.memberCount(),
+                        entry.score(),
+                        rank
+                );
             }
 
         } catch (SQLException exception) {
