@@ -4,6 +4,7 @@ package my.kingdomvortex.vortexkingdom.placeholder;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
 import my.kingdomvortex.vortexkingdom.kingdom.Kingdom;
+import my.kingdomvortex.vortexkingdom.kingdom.KingdomMember;
 
 import org.bukkit.OfflinePlayer;
 
@@ -47,12 +48,18 @@ public final class KingdomPlaceholder extends PlaceholderExpansion {
             return "";
         }
 
+        if (params == null || params.isBlank()) {
+            return null;
+        }
+
+        String key = params.toLowerCase(Locale.ROOT);
+
         Optional<Kingdom> optional =
                 plugin.getKingdomManager()
                         .getKingdomByPlayer(player.getUniqueId());
 
         if (optional.isEmpty()) {
-            return getNoKingdomValue(params);
+            return getNoKingdomValue(key);
         }
 
         Kingdom kingdom = optional.get();
@@ -61,10 +68,32 @@ public final class KingdomPlaceholder extends PlaceholderExpansion {
         long currentExp = kingdom.getExperience();
         long totalExp = kingdom.getTotalExperience();
 
-        return switch (params.toLowerCase(Locale.ROOT)) {
+        Optional<KingdomMember> member =
+                plugin.getKingdomManager()
+                        .getMember(player.getUniqueId());
+
+        return switch (key) {
+
+            // ==========================================
+            // KINGDOM IDENTITY
+            // ==========================================
 
             case "name" ->
                     kingdom.getName();
+
+            case "id" ->
+                    String.valueOf(kingdom.getId());
+
+            case "owner" ->
+                    kingdom.getOwnerUuid();
+
+            case "role" ->
+                    member.map(value -> value.getRole().name())
+                            .orElse("NONE");
+
+            // ==========================================
+            // LEVEL AND EXPERIENCE
+            // ==========================================
 
             case "level" ->
                     String.valueOf(level);
@@ -95,6 +124,10 @@ public final class KingdomPlaceholder extends PlaceholderExpansion {
                                     .getProgress(player.getUniqueId())
                     );
 
+            // ==========================================
+            // MEMBERS
+            // ==========================================
+
             case "members" ->
                     String.valueOf(
                             plugin.getKingdomManager()
@@ -104,14 +137,35 @@ public final class KingdomPlaceholder extends PlaceholderExpansion {
             case "max_members" ->
                     String.valueOf(
                             plugin.getKingdomManager()
-                                    .getMaxMembers(kingdom.getId())
+                                    .getMaxMembers(level)
                     );
+
+            case "members_left" ->
+                    String.valueOf(
+                            Math.max(
+                                    0,
+                                    plugin.getKingdomManager()
+                                            .getMaxMembers(level)
+                                            - plugin.getKingdomManager()
+                                            .getMemberCount(kingdom.getId())
+                            )
+                    );
+
+            // ==========================================
+            // STATISTICS
+            // ==========================================
 
             case "kills" ->
                     String.valueOf(kingdom.getTotalKills());
 
+            // ==========================================
+            // KINGDOM SETTINGS
+            // ==========================================
+
             case "pvp" ->
-                    kingdom.isPvpEnabled() ? "Enabled" : "Disabled";
+                    kingdom.isPvpEnabled()
+                            ? "Enabled"
+                            : "Disabled";
 
             case "pvp_boolean" ->
                     String.valueOf(kingdom.isPvpEnabled());
@@ -121,17 +175,28 @@ public final class KingdomPlaceholder extends PlaceholderExpansion {
     }
 
     private String getNoKingdomValue(String params) {
-        return switch (params.toLowerCase(Locale.ROOT)) {
-            case "level", "exp", "total_exp",
-                 "required_exp", "remaining_exp",
-                 "progress", "members", "max_members",
-                 "kills" -> "0";
+        return switch (params) {
+
+            case "level",
+                 "exp",
+                 "total_exp",
+                 "required_exp",
+                 "remaining_exp",
+                 "progress",
+                 "members",
+                 "max_members",
+                 "members_left",
+                 "kills",
+                 "id" -> "0";
 
             case "pvp_boolean" -> "false";
 
             case "pvp" -> "Disabled";
 
-            case "name" -> "None";
+            case "name",
+                 "owner" -> "None";
+
+            case "role" -> "NONE";
 
             default -> null;
         };
