@@ -1,3 +1,4 @@
+
 package my.kingdomvortex.vortexkingdom;
 
 import my.kingdomvortex.vortexkingdom.command.KingdomCommand;
@@ -13,12 +14,13 @@ import my.kingdomvortex.vortexkingdom.manager.KingdomLeaderboardManager;
 import my.kingdomvortex.vortexkingdom.manager.KingdomManager;
 import my.kingdomvortex.vortexkingdom.placeholder.KingdomPlaceholder;
 
+import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.util.logging.Level;
 
 public final class VortexKingdom extends JavaPlugin {
 
@@ -46,89 +48,85 @@ public final class VortexKingdom extends JavaPlugin {
         loadExpConfig();
 
         try {
-            databaseManager = new DatabaseManager(this);
-            databaseManager.connect();
-
-            kingdomManager = new KingdomManager(
-                    this,
-                    databaseManager
-            );
-
-            levelManager = new KingdomLevelManager(this);
-            expRewardManager = new ExpRewardManager(this);
-            leaderboardManager = new KingdomLeaderboardManager(this);
-
-            guiManager = new KingdomGUIManager(this);
-            leaderboardGUIManager =
-                    new KingdomLeaderboardGUIManager(this);
-
-            getServer().getPluginManager().registerEvents(
-                    new KingdomGUIListener(this, guiManager),
-                    this
-            );
-
-            getServer().getPluginManager().registerEvents(
-                    new KingdomExpListener(this),
-                    this
-            );
-
-            getServer().getPluginManager().registerEvents(
-                    new KingdomLeaderboardGUIListener(this),
-                    this
-            );
-
+            initializeDatabase();
+            initializeManagers();
+            registerListeners();
             registerCommands();
             registerPlaceholder();
 
-        } catch (Exception exception) {
-            getLogger().severe(
-                    "Failed to initialize VortexKingdom!"
+            getLogger().info("==================================");
+            getLogger().info("          VORTEX KINGDOM");
+            getLogger().info("==================================");
+            getLogger().info("Database: Connected");
+            getLogger().info("Kingdom Manager: Loaded");
+            getLogger().info("Level Manager: Loaded");
+            getLogger().info("EXP Reward Manager: Loaded");
+            getLogger().info("Leaderboard Manager: Loaded");
+            getLogger().info("GUI Manager: Loaded");
+            getLogger().info("Listeners: Registered");
+            getLogger().info(
+                    "PlaceholderAPI: "
+                            + (placeholder != null
+                            ? "Registered" : "Not Installed")
             );
+            getLogger().info("==================================");
 
-            exception.printStackTrace();
+        } catch (Exception exception) {
+            getLogger().log(
+                    Level.SEVERE,
+                    "Failed to initialize VortexKingdom!",
+                    exception
+            );
 
             if (databaseManager != null) {
                 databaseManager.disconnect();
             }
 
             getServer().getPluginManager().disablePlugin(this);
-            return;
         }
+    }
 
-        getLogger().info("==================================");
-        getLogger().info("          VORTEX KINGDOM");
-        getLogger().info("==================================");
-        getLogger().info("Database: Connected");
-        getLogger().info("Kingdom Manager: Loaded");
-        getLogger().info("Level Manager: Loaded");
-        getLogger().info("EXP Reward Manager: Loaded");
-        getLogger().info("Leaderboard Manager: Loaded");
-        getLogger().info("GUI Manager: Loaded");
-        getLogger().info("Listeners: Registered");
-        getLogger().info(
-                "PlaceholderAPI: "
-                        + (placeholder != null ? "Registered" : "Not Installed")
+    private void initializeDatabase() {
+        databaseManager = new DatabaseManager(this);
+        databaseManager.connect();
+
+        if (!databaseManager.isConnected()) {
+            throw new IllegalStateException(
+                    "SQLite database connection failed."
+            );
+        }
+    }
+
+    private void initializeManagers() {
+        kingdomManager = new KingdomManager(
+                this,
+                databaseManager
         );
-        getLogger().info("==================================");
+
+        levelManager = new KingdomLevelManager(this);
+        expRewardManager = new ExpRewardManager(this);
+        leaderboardManager = new KingdomLeaderboardManager(this);
+
+        guiManager = new KingdomGUIManager(this);
+        leaderboardGUIManager =
+                new KingdomLeaderboardGUIManager(this);
     }
 
-    private void loadExpConfig() {
-        expFile = new File(getDataFolder(), "exp.yml");
+    private void registerListeners() {
+        getServer().getPluginManager().registerEvents(
+                new KingdomGUIListener(this, guiManager),
+                this
+        );
 
-        if (!expFile.exists()) {
-            saveResource("exp.yml", false);
-        }
+        getServer().getPluginManager().registerEvents(
+                new KingdomExpListener(this),
+                this
+        );
 
-        expConfig = YamlConfiguration.loadConfiguration(expFile);
-    }
-
-    public void reloadExpConfig() {
-        if (expFile == null) {
-            loadExpConfig();
-            return;
-        }
-
-        expConfig = YamlConfiguration.loadConfiguration(expFile);
+        getServer().getPluginManager().registerEvents(
+                new KingdomLeaderboardGUIListener(this),
+                this
+        );
     }
 
     private void registerCommands() {
@@ -166,6 +164,32 @@ public final class VortexKingdom extends JavaPlugin {
         }
     }
 
+    private void loadExpConfig() {
+        expFile = new File(getDataFolder(), "exp.yml");
+
+        if (!expFile.exists()) {
+            if (!getDataFolder().exists()
+                    && !getDataFolder().mkdirs()) {
+                throw new IllegalStateException(
+                        "Could not create plugin data folder."
+                );
+            }
+
+            saveResource("exp.yml", false);
+        }
+
+        expConfig = YamlConfiguration.loadConfiguration(expFile);
+    }
+
+    public void reloadExpConfig() {
+        if (expFile == null) {
+            loadExpConfig();
+            return;
+        }
+
+        expConfig = YamlConfiguration.loadConfiguration(expFile);
+    }
+
     @Override
     public void onDisable() {
         if (placeholder != null) {
@@ -177,9 +201,9 @@ public final class VortexKingdom extends JavaPlugin {
             databaseManager.disconnect();
         }
 
-        getLogger().info("VortexKingdom disabled.");
-
         instance = null;
+
+        getLogger().info("VortexKingdom disabled.");
     }
 
     public static VortexKingdom getInstance() {
@@ -217,4 +241,4 @@ public final class VortexKingdom extends JavaPlugin {
     public FileConfiguration getExpConfig() {
         return expConfig;
     }
-    }
+}
