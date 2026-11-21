@@ -1,0 +1,45 @@
+
+settings:
+  maximum-level: 100
+  base-required-exp: 1000
+  growth-rate: 1.18
+  daily-exp-limit: 10000
+  cooldown-seconds: 3
+  anti-farming: true
+
+rewards:
+  level-up:
+    enabled: true
+    broadcast: true
+    sound: ENTITY_PLAYER_LEVELUP
+
+sources:
+  mining:
+    enabled: true
+    exp: 2
+    cooldown: 3
+
+  farming:
+    enabled: true
+    exp: 3
+    cooldown: 3
+
+  monster-kill:
+    enabled: true
+    exp: 5
+    cooldown: 5
+
+  boss-kill:
+    enabled: true
+    exp: 50
+    cooldown: 30
+
+  quest:
+    enabled: true
+    exp: 100
+    cooldown: 0
+
+anti-farming:
+  enabled: true
+  repeated-action-multiplier: 0.25
+  maximum-reduced-rewards: 10
