@@ -42,32 +42,49 @@ public final class KingdomGUIManager {
     // ==========================================
 
     public void openMainMenu(Player player) {
+
         Optional<Kingdom> optional =
-                kingdomManager.getKingdomByPlayer(player.getUniqueId());
+                kingdomManager.getKingdomByPlayer(
+                        player.getUniqueId()
+                );
 
         KingdomMenuHolder holder =
-                new KingdomMenuHolder(KingdomMenuHolder.Menu.MAIN);
+                new KingdomMenuHolder(
+                        KingdomMenuHolder.Menu.MAIN
+                );
 
         Inventory inventory = createInventory(
                 holder, "§0✦ §6§lKINGDOM"
         );
 
         if (optional.isEmpty()) {
-            setItem(inventory, 22, Material.GOLDEN_HELMET,
+
+            setItem(
+                    inventory,
+                    22,
+                    Material.GOLDEN_HELMET,
                     "§6§lCreate Kingdom",
                     "§7Bangun kerajaanmu sendiri.",
                     "",
                     "§eKlik untuk membuat Kingdom."
             );
 
-            setItem(inventory, 31, Material.BOOK,
+            setItem(
+                    inventory,
+                    31,
+                    Material.BOOK,
                     "§b§lKingdom Information",
                     "§7Pelajari sistem Kingdom."
             );
+
         } else {
+
             Kingdom kingdom = optional.get();
 
-            setItem(inventory, 10, Material.GOLDEN_HELMET,
+            setItem(
+                    inventory,
+                    10,
+                    Material.GOLDEN_HELMET,
                     "§6§lKingdom Profile",
                     "§7Nama: §f" + kingdom.getName(),
                     "§7Level: §e" + kingdom.getLevel(),
@@ -75,14 +92,20 @@ public final class KingdomGUIManager {
                     "§eKlik untuk melihat profil."
             );
 
-            setItem(inventory, 12, Material.PLAYER_HEAD,
+            setItem(
+                    inventory,
+                    12,
+                    Material.PLAYER_HEAD,
                     "§b§lKingdom Members",
                     "§7Kelola anggota Kingdom.",
                     "",
                     "§eKlik untuk membuka."
             );
 
-            setItem(inventory, 14, Material.EXPERIENCE_BOTTLE,
+            setItem(
+                    inventory,
+                    14,
+                    Material.EXPERIENCE_BOTTLE,
                     "§a§lKingdom Level",
                     "§7Level: §e" + kingdom.getLevel(),
                     "§7EXP: §f" + kingdom.getExperience(),
@@ -90,31 +113,46 @@ public final class KingdomGUIManager {
                     "§eKlik untuk melihat progres."
             );
 
-            setItem(inventory, 16, Material.COMPASS,
+            setItem(
+                    inventory,
+                    16,
+                    Material.COMPASS,
                     "§d§lKingdom Home",
                     "§7Teleport menuju markas Kingdom."
             );
 
-            setItem(inventory, 31, Material.BOOK,
+            setItem(
+                    inventory,
+                    31,
+                    Material.BOOK,
                     "§b§lKingdom Information",
                     "§7Nama: §f" + kingdom.getName(),
                     "§7Level: §e" + kingdom.getLevel()
             );
         }
 
-        setItem(inventory, 38, Material.GOLD_INGOT,
+        setItem(
+                inventory,
+                38,
+                Material.GOLD_INGOT,
                 "§6§lLeaderboard",
                 "§7Lihat Kingdom terbaik."
         );
 
-        setItem(inventory, 40, Material.WRITABLE_BOOK,
+        setItem(
+                inventory,
+                40,
+                Material.WRITABLE_BOOK,
                 "§e§lInvitations",
                 "§7Periksa undangan Kingdom.",
                 "",
                 "§eKlik untuk membuka."
         );
 
-        setItem(inventory, 42, Material.BARRIER,
+        setItem(
+                inventory,
+                42,
+                Material.BARRIER,
                 "§c§lClose",
                 "§7Tutup menu."
         );
@@ -128,8 +166,11 @@ public final class KingdomGUIManager {
     // ==========================================
 
     public void openProfile(Player player) {
+
         Optional<Kingdom> optional =
-                kingdomManager.getKingdomByPlayer(player.getUniqueId());
+                kingdomManager.getKingdomByPlayer(
+                        player.getUniqueId()
+                );
 
         if (optional.isEmpty()) {
             sendNoKingdom(player);
@@ -139,40 +180,62 @@ public final class KingdomGUIManager {
         Kingdom kingdom = optional.get();
 
         KingdomMenuHolder holder =
-                new KingdomMenuHolder(KingdomMenuHolder.Menu.PROFILE);
+                new KingdomMenuHolder(
+                        KingdomMenuHolder.Menu.PROFILE
+                );
 
         Inventory inventory = createInventory(
-                holder, "§0✦ §6§lKINGDOM PROFILE"
+                holder,
+                "§0✦ §6§lKINGDOM PROFILE"
         );
 
-        setItem(inventory, 13, Material.GOLDEN_HELMET,
+        setItem(
+                inventory,
+                13,
+                Material.GOLDEN_HELMET,
                 "§6§l" + kingdom.getName(),
                 "§7Level: §e" + kingdom.getLevel(),
                 "§7EXP: §f" + kingdom.getExperience(),
                 "§7Members: §f" +
-                        kingdomManager.getMemberCount(kingdom.getId()),
+                        kingdomManager.getMemberCount(
+                                kingdom.getId()
+                        ),
                 "§7Capacity: §f" +
-                        kingdomManager.getMaxMembers(kingdom.getLevel())
+                        kingdomManager.getMaxMembers(
+                                kingdom.getLevel()
+                        )
         );
 
-        setItem(inventory, 29, Material.PLAYER_HEAD,
+        setItem(
+                inventory,
+                29,
+                Material.PLAYER_HEAD,
                 "§b§lManage Members",
                 "§7Kelola anggota Kingdom.",
                 "",
                 "§eKlik untuk membuka."
         );
 
-        setItem(inventory, 31, Material.EXPERIENCE_BOTTLE,
+        setItem(
+                inventory,
+                31,
+                Material.EXPERIENCE_BOTTLE,
                 "§a§lKingdom Level",
                 "§7Lihat progres level."
         );
 
-        setItem(inventory, 33, Material.OAK_DOOR,
+        setItem(
+                inventory,
+                33,
+                Material.OAK_DOOR,
                 "§c§lLeave Kingdom",
                 "§7Keluar dari Kingdom."
         );
 
-        setItem(inventory, 49, Material.ARROW,
+        setItem(
+                inventory,
+                49,
+                Material.ARROW,
                 "§7Back to Main Menu"
         );
 
@@ -185,8 +248,11 @@ public final class KingdomGUIManager {
     // ==========================================
 
     public void openLevelMenu(Player player) {
+
         Optional<Kingdom> optional =
-                kingdomManager.getKingdomByPlayer(player.getUniqueId());
+                kingdomManager.getKingdomByPlayer(
+                        player.getUniqueId()
+                );
 
         if (optional.isEmpty()) {
             sendNoKingdom(player);
@@ -196,37 +262,64 @@ public final class KingdomGUIManager {
         Kingdom kingdom = optional.get();
 
         KingdomMenuHolder holder =
-                new KingdomMenuHolder(KingdomMenuHolder.Menu.LEVEL);
+                new KingdomMenuHolder(
+                        KingdomMenuHolder.Menu.LEVEL
+                );
 
         Inventory inventory = createInventory(
-                holder, "§0✦ §a§lKINGDOM LEVEL"
+                holder,
+                "§0✦ §a§lKINGDOM LEVEL"
         );
 
-        setItem(inventory, 13, Material.BEACON,
+        setItem(
+                inventory,
+                13,
+                Material.BEACON,
                 "§a§lKingdom Level",
                 "§7Level: §e" + kingdom.getLevel()
         );
 
-        setItem(inventory, 21, Material.EXPERIENCE_BOTTLE,
+        setItem(
+                inventory,
+                21,
+                Material.EXPERIENCE_BOTTLE,
                 "§b§lExperience",
-                "§7Current EXP: §f" + kingdom.getExperience(),
-                "§7Total EXP: §f" + kingdom.getTotalExperience()
+                "§7Current EXP: §f" +
+                        kingdom.getExperience(),
+                "§7Total EXP: §f" +
+                        kingdom.getTotalExperience()
         );
 
-        setItem(inventory, 23, Material.KNOWLEDGE_BOOK,
+        setItem(
+                inventory,
+                23,
+                Material.KNOWLEDGE_BOOK,
                 "§e§lNext Level",
-                "§7Next Level: §f" + (kingdom.getLevel() + 1)
+                "§7Next Level: §f" +
+                        (kingdom.getLevel() + 1)
         );
 
-        setItem(inventory, 31, Material.CHEST,
+        setItem(
+                inventory,
+                31,
+                Material.CHEST,
                 "§6§lMember Capacity",
                 "§7Members: §f" +
-                        kingdomManager.getMemberCount(kingdom.getId()),
+                        kingdomManager.getMemberCount(
+                                kingdom.getId()
+                        ),
                 "§7Capacity: §f" +
-                        kingdomManager.getMaxMembers(kingdom.getLevel())
+                        kingdomManager.getMaxMembers(
+                                kingdom.getLevel()
+                        )
         );
 
-        setItem(inventory, 49, Material.ARROW, "§7Back");
+        setItem(
+                inventory,
+                49,
+                Material.ARROW,
+                "§7Back"
+        );
 
         fillEmpty(inventory);
         player.openInventory(inventory);
@@ -237,8 +330,11 @@ public final class KingdomGUIManager {
     // ==========================================
 
     public void openMembers(Player player, int page) {
+
         Optional<Kingdom> optional =
-                kingdomManager.getKingdomByPlayer(player.getUniqueId());
+                kingdomManager.getKingdomByPlayer(
+                        player.getUniqueId()
+                );
 
         if (optional.isEmpty()) {
             sendNoKingdom(player);
@@ -246,64 +342,115 @@ public final class KingdomGUIManager {
         }
 
         Kingdom kingdom = optional.get();
+
         List<KingdomMember> members =
-                kingdomManager.getMembers(kingdom.getId());
+                kingdomManager.getMembers(
+                        kingdom.getId()
+                );
 
         int maxPage = Math.max(
-                0, (members.size() - 1) / MEMBER_SLOTS.length
+                0,
+                (members.size() - 1) / MEMBER_SLOTS.length
         );
 
-        page = Math.max(0, Math.min(page, maxPage));
-
-        KingdomMenuHolder holder = new KingdomMenuHolder(
-                KingdomMenuHolder.Menu.MEMBERS, page
+        page = Math.max(
+                0,
+                Math.min(page, maxPage)
         );
+
+        KingdomMenuHolder holder =
+                new KingdomMenuHolder(
+                        KingdomMenuHolder.Menu.MEMBERS,
+                        page
+                );
 
         Inventory inventory = createInventory(
                 holder,
-                "§0✦ §6§lMEMBERS §8[" + (page + 1) + "]"
+                "§0✦ §6§lMEMBERS §8[" +
+                        (page + 1) + "]"
         );
 
         int start = page * MEMBER_SLOTS.length;
-        int end = Math.min(start + MEMBER_SLOTS.length, members.size());
+        int end = Math.min(
+                start + MEMBER_SLOTS.length,
+                members.size()
+        );
 
         for (int i = start; i < end; i++) {
-            KingdomMember member = members.get(i);
-            OfflinePlayer offline =
-                    Bukkit.getOfflinePlayer(member.getPlayerUuid());
 
-            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+            KingdomMember member = members.get(i);
+
+            UUID memberUuid = member.getPlayerUniqueId();
+
+            ItemStack head = new ItemStack(
+                    Material.PLAYER_HEAD
+            );
+
             SkullMeta meta = (SkullMeta) head.getItemMeta();
 
             if (meta != null) {
-                meta.setOwningPlayer(offline);
-                meta.setDisplayName("§6§l" + member.getPlayerName());
+
+                if (memberUuid != null) {
+                    OfflinePlayer offline =
+                            Bukkit.getOfflinePlayer(memberUuid);
+
+                    meta.setOwningPlayer(offline);
+                }
+
+                meta.setDisplayName(
+                        "§6§l" + member.getPlayerName()
+                );
 
                 List<String> lore = new ArrayList<>();
-                lore.add("§7Role: §e" + member.getRole().name());
-                lore.add("§7Status: " +
-                        (offline.isOnline() ? "§aOnline" : "§cOffline"));
+
+                lore.add(
+                        "§7Role: §e" +
+                                member.getRole().name()
+                );
+
+                boolean online = memberUuid != null &&
+                        Bukkit.getPlayer(memberUuid) != null;
+
+                lore.add(
+                        "§7Status: " +
+                                (online ? "§aOnline" : "§cOffline")
+                );
+
                 lore.add("");
-                lore.add("§eKlik untuk mengelola anggota.");
+                lore.add(
+                        "§eKlik untuk mengelola anggota."
+                );
 
                 meta.setLore(lore);
                 head.setItemMeta(meta);
             }
 
             inventory.setItem(
-                    MEMBER_SLOTS[i - start], head
+                    MEMBER_SLOTS[i - start],
+                    head
             );
         }
 
-        setItem(inventory, 45, Material.ARROW, "§7Back");
+        setItem(
+                inventory,
+                45,
+                Material.ARROW,
+                "§7Back"
+        );
 
         if (page > 0) {
-            setItem(inventory, 48, Material.PAPER,
+            setItem(
+                    inventory,
+                    48,
+                    Material.PAPER,
                     "§ePrevious Page"
             );
         }
 
-        setItem(inventory, 49, Material.EMERALD,
+        setItem(
+                inventory,
+                49,
+                Material.EMERALD,
                 "§a§lInvite Player",
                 "§7Undang player online.",
                 "",
@@ -311,12 +458,18 @@ public final class KingdomGUIManager {
         );
 
         if (page < maxPage) {
-            setItem(inventory, 50, Material.PAPER,
+            setItem(
+                    inventory,
+                    50,
+                    Material.PAPER,
                     "§eNext Page"
             );
         }
 
-        setItem(inventory, 53, Material.BARRIER,
+        setItem(
+                inventory,
+                53,
+                Material.BARRIER,
                 "§cClose"
         );
 
@@ -329,8 +482,11 @@ public final class KingdomGUIManager {
     // ==========================================
 
     public void openInvitePlayers(Player player) {
+
         Optional<Kingdom> optional =
-                kingdomManager.getKingdomByPlayer(player.getUniqueId());
+                kingdomManager.getKingdomByPlayer(
+                        player.getUniqueId()
+                );
 
         if (optional.isEmpty()) {
             sendNoKingdom(player);
@@ -343,13 +499,16 @@ public final class KingdomGUIManager {
                 );
 
         Inventory inventory = createInventory(
-                holder, "§0✦ §a§lINVITE PLAYERS"
+                holder,
+                "§0✦ §a§lINVITE PLAYERS"
         );
 
         int index = 0;
 
         for (Player target : Bukkit.getOnlinePlayers()) {
-            if (target.getUniqueId().equals(player.getUniqueId())) {
+
+            if (target.getUniqueId().equals(
+                    player.getUniqueId())) {
                 continue;
             }
 
@@ -362,32 +521,53 @@ public final class KingdomGUIManager {
                 break;
             }
 
-            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-            SkullMeta meta = (SkullMeta) head.getItemMeta();
+            ItemStack head = new ItemStack(
+                    Material.PLAYER_HEAD
+            );
+
+            SkullMeta meta =
+                    (SkullMeta) head.getItemMeta();
 
             if (meta != null) {
+
                 meta.setOwningPlayer(target);
-                meta.setDisplayName("§a§l" + target.getName());
+
+                meta.setDisplayName(
+                        "§a§l" + target.getName()
+                );
+
                 meta.setLore(List.of(
                         "§7Player: §f" + target.getName(),
                         "",
                         "§eKlik untuk mengundang."
                 ));
+
                 head.setItemMeta(meta);
             }
 
-            inventory.setItem(MEMBER_SLOTS[index++], head);
+            inventory.setItem(
+                    MEMBER_SLOTS[index++],
+                    head
+            );
         }
 
         if (index == 0) {
-            setItem(inventory, 22, Material.BARRIER,
+            setItem(
+                    inventory,
+                    22,
+                    Material.BARRIER,
                     "§cNo Available Players",
                     "§7Tidak ada player online",
                     "§7yang bisa diundang."
             );
         }
 
-        setItem(inventory, 49, Material.ARROW, "§7Back");
+        setItem(
+                inventory,
+                49,
+                Material.ARROW,
+                "§7Back"
+        );
 
         fillEmpty(inventory);
         player.openInventory(inventory);
@@ -397,9 +577,15 @@ public final class KingdomGUIManager {
     // MEMBER ACTIONS MENU
     // ==========================================
 
-    public void openMemberActions(Player player, UUID targetUuid) {
+    public void openMemberActions(
+            Player player,
+            UUID targetUuid
+    ) {
+
         Optional<Kingdom> optional =
-                kingdomManager.getKingdomByPlayer(player.getUniqueId());
+                kingdomManager.getKingdomByPlayer(
+                        player.getUniqueId()
+                );
 
         if (optional.isEmpty()) {
             sendNoKingdom(player);
@@ -412,58 +598,94 @@ public final class KingdomGUIManager {
                 kingdomManager.getMember(targetUuid);
 
         if (targetOptional.isEmpty() ||
-                targetOptional.get().getKingdomId() != kingdom.getId()) {
-            player.sendMessage("§cAnggota tidak ditemukan.");
+                targetOptional.get().getKingdomId()
+                        != kingdom.getId()) {
+
+            player.sendMessage(
+                    "§cAnggota tidak ditemukan."
+            );
             return;
         }
 
         KingdomMember target = targetOptional.get();
 
-        KingdomMenuHolder holder = new KingdomMenuHolder(
-                KingdomMenuHolder.Menu.MEMBER_ACTIONS,
-                0,
-                targetUuid.toString()
-        );
+        KingdomMenuHolder holder =
+                new KingdomMenuHolder(
+                        KingdomMenuHolder.Menu.MEMBER_ACTIONS,
+                        0,
+                        targetUuid.toString()
+                );
 
         Inventory inventory = createInventory(
-                holder, "§0✦ §6§lMEMBER MANAGEMENT"
+                holder,
+                "§0✦ §6§lMEMBER MANAGEMENT"
         );
 
-        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-        SkullMeta meta = (SkullMeta) head.getItemMeta();
+        ItemStack head = new ItemStack(
+                Material.PLAYER_HEAD
+        );
+
+        SkullMeta meta =
+                (SkullMeta) head.getItemMeta();
 
         if (meta != null) {
-            meta.setOwningPlayer(Bukkit.getOfflinePlayer(targetUuid));
-            meta.setDisplayName("§6§l" + target.getPlayerName());
+
+            meta.setOwningPlayer(
+                    Bukkit.getOfflinePlayer(targetUuid)
+            );
+
+            meta.setDisplayName(
+                    "§6§l" + target.getPlayerName()
+            );
+
             meta.setLore(List.of(
-                    "§7Role: §e" + target.getRole().name()
+                    "§7Role: §e" +
+                            target.getRole().name()
             ));
+
             head.setItemMeta(meta);
         }
 
         inventory.setItem(13, head);
 
-        setItem(inventory, 20, Material.LIME_DYE,
+        setItem(
+                inventory,
+                20,
+                Material.LIME_DYE,
                 "§a§lPromote",
                 "§7Naikkan role anggota."
         );
 
-        setItem(inventory, 22, Material.YELLOW_DYE,
+        setItem(
+                inventory,
+                22,
+                Material.YELLOW_DYE,
                 "§e§lDemote",
                 "§7Turunkan role anggota."
         );
 
-        setItem(inventory, 24, Material.RED_DYE,
+        setItem(
+                inventory,
+                24,
+                Material.RED_DYE,
                 "§c§lKick Member",
                 "§7Keluarkan anggota."
         );
 
-        setItem(inventory, 31, Material.GOLDEN_HELMET,
+        setItem(
+                inventory,
+                31,
+                Material.GOLDEN_HELMET,
                 "§6§lTransfer Ownership",
                 "§7Pindahkan kepemilikan Kingdom."
         );
 
-        setItem(inventory, 49, Material.ARROW, "§7Back");
+        setItem(
+                inventory,
+                49,
+                Material.ARROW,
+                "§7Back"
+        );
 
         fillEmpty(inventory);
         player.openInventory(inventory);
@@ -474,8 +696,11 @@ public final class KingdomGUIManager {
     // ==========================================
 
     public void openInvitations(Player player) {
+
         List<KingdomManager.Invitation> invitations =
-                kingdomManager.getInvitations(player.getUniqueId());
+                kingdomManager.getInvitations(
+                        player.getUniqueId()
+                );
 
         KingdomMenuHolder holder =
                 new KingdomMenuHolder(
@@ -483,21 +708,27 @@ public final class KingdomGUIManager {
                 );
 
         Inventory inventory = createInventory(
-                holder, "§0✦ §e§lINVITATIONS"
+                holder,
+                "§0✦ §e§lINVITATIONS"
         );
 
         int index = 0;
 
         for (KingdomManager.Invitation invitation : invitations) {
+
             if (index >= MEMBER_SLOTS.length) {
                 break;
             }
 
-            setItem(inventory, MEMBER_SLOTS[index++],
+            setItem(
+                    inventory,
+                    MEMBER_SLOTS[index++],
                     Material.WRITABLE_BOOK,
                     "§e§l" + invitation.kingdomName(),
-                    "§7Invitation ID: §f" + invitation.id(),
-                    "§7Inviter: §f" + invitation.inviterUuid(),
+                    "§7Invitation ID: §f" +
+                            invitation.id(),
+                    "§7Inviter: §f" +
+                            invitation.inviterUuid(),
                     "",
                     "§aLeft-click: Accept",
                     "§cRight-click: Deny"
@@ -505,31 +736,43 @@ public final class KingdomGUIManager {
         }
 
         if (index == 0) {
-            setItem(inventory, 22, Material.BARRIER,
+            setItem(
+                    inventory,
+                    22,
+                    Material.BARRIER,
                     "§cNo Invitations",
                     "§7Kamu tidak memiliki undangan."
             );
         }
 
-        setItem(inventory, 49, Material.ARROW, "§7Back");
+        setItem(
+                inventory,
+                49,
+                Material.ARROW,
+                "§7Back"
+        );
 
         fillEmpty(inventory);
         player.openInventory(inventory);
     }
 
     // ==========================================
-    // HELPERS
+    // INVENTORY HELPERS
     // ==========================================
 
     private Inventory createInventory(
             KingdomMenuHolder holder,
             String title
     ) {
+
         Inventory inventory = Bukkit.createInventory(
-                holder, 54, title
+                holder,
+                54,
+                title
         );
 
         holder.setInventory(inventory);
+
         return inventory;
     }
 
@@ -540,7 +783,9 @@ public final class KingdomGUIManager {
             String name,
             String... lore
     ) {
+
         ItemStack item = new ItemStack(material);
+
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
@@ -553,6 +798,7 @@ public final class KingdomGUIManager {
     }
 
     private void fillEmpty(Inventory inventory) {
+
         ItemStack filler = new ItemStack(
                 Material.GRAY_STAINED_GLASS_PANE
         );
@@ -565,6 +811,7 @@ public final class KingdomGUIManager {
         }
 
         for (int i = 0; i < inventory.getSize(); i++) {
+
             if (inventory.getItem(i) == null) {
                 inventory.setItem(i, filler);
             }
@@ -572,6 +819,8 @@ public final class KingdomGUIManager {
     }
 
     private void sendNoKingdom(Player player) {
-        player.sendMessage("§cKamu belum memiliki Kingdom.");
+        player.sendMessage(
+                "§cKamu belum memiliki Kingdom."
+        );
     }
 }
