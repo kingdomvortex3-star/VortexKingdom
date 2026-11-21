@@ -235,3 +235,28 @@ public final class VortexKingdom extends JavaPlugin {
         return expConfig;
     }
 }
+
+getServer().getPluginManager().registerEvents(
+        new KingdomGUIListener(this, guiManager),
+        this
+);
+
+getServer().getPluginManager().registerEvents(
+        new KingdomExpListener(this),
+        this
+);
+
+getServer().getPluginManager().registerEvents(
+        new KingdomLeaderboardGUIListener(this),
+        this
+);
+
+getServer().getPluginManager().registerEvents(
+        new KingdomFeatureListener(this, featureGUIManager),
+        this
+);
+
+getServer().getPluginManager().registerEvents(
+        new KingdomFeatureEntryListener(this, featureGUIManager),
+        this
+);
