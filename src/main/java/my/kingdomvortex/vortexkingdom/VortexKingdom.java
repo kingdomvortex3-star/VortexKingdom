@@ -1,4 +1,3 @@
-
 package my.kingdomvortex.vortexkingdom;
 
 import my.kingdomvortex.vortexkingdom.command.KingdomCommand;
@@ -68,31 +67,7 @@ public final class VortexKingdom extends JavaPlugin {
             featureManager = new KingdomFeatureManager(this);
             featureGUIManager = new KingdomFeatureGUIManager(this);
 
-            getServer().getPluginManager().registerEvents(
-                    new KingdomGUIListener(this, guiManager),
-                    this
-            );
-
-            getServer().getPluginManager().registerEvents(
-                    new KingdomExpListener(this),
-                    this
-            );
-
-            getServer().getPluginManager().registerEvents(
-                    new KingdomLeaderboardGUIListener(this),
-                    this
-            );
-
-            getServer().getPluginManager().registerEvents(
-                    new KingdomFeatureListener(this, featureGUIManager),
-                    this
-            );
-
-            getServer().getPluginManager().registerEvents(
-                    new KingdomFeatureEntryListener(this, featureGUIManager),
-                    this
-            );
-
+            registerListeners();
             registerCommands();
             registerPlaceholder();
 
@@ -108,23 +83,34 @@ public final class VortexKingdom extends JavaPlugin {
             return;
         }
 
-        getLogger().info("==================================");
-        getLogger().info("          VORTEX KINGDOM");
-        getLogger().info("==================================");
-        getLogger().info("Database: Connected");
-        getLogger().info("Kingdom Manager: Loaded");
-        getLogger().info("Level Manager: Loaded");
-        getLogger().info("EXP Reward Manager: Loaded");
-        getLogger().info("Leaderboard Manager: Loaded");
-        getLogger().info("Feature Manager: Loaded");
-        getLogger().info("GUI Manager: Loaded");
-        getLogger().info("Feature GUI Manager: Loaded");
-        getLogger().info("Listeners: Registered");
-        getLogger().info(
-                "PlaceholderAPI: "
-                        + (placeholder != null ? "Registered" : "Not Installed")
+        printStartupInfo();
+    }
+
+    private void registerListeners() {
+        getServer().getPluginManager().registerEvents(
+                new KingdomGUIListener(this, guiManager),
+                this
         );
-        getLogger().info("==================================");
+
+        getServer().getPluginManager().registerEvents(
+                new KingdomExpListener(this),
+                this
+        );
+
+        getServer().getPluginManager().registerEvents(
+                new KingdomLeaderboardGUIListener(this),
+                this
+        );
+
+        getServer().getPluginManager().registerEvents(
+                new KingdomFeatureListener(this, featureGUIManager),
+                this
+        );
+
+        getServer().getPluginManager().registerEvents(
+                new KingdomFeatureEntryListener(this, featureGUIManager),
+                this
+        );
     }
 
     private void loadExpConfig() {
@@ -156,6 +142,7 @@ public final class VortexKingdom extends JavaPlugin {
         }
 
         KingdomCommand executor = new KingdomCommand(this);
+
         command.setExecutor(executor);
         command.setTabCompleter(executor);
     }
@@ -172,10 +159,31 @@ public final class VortexKingdom extends JavaPlugin {
 
         if (!placeholder.register()) {
             placeholder = null;
+
             getLogger().warning(
                     "Failed to register Kingdom PlaceholderAPI expansion."
             );
         }
+    }
+
+    private void printStartupInfo() {
+        getLogger().info("==================================");
+        getLogger().info("          VORTEX KINGDOM");
+        getLogger().info("==================================");
+        getLogger().info("Database: Connected");
+        getLogger().info("Kingdom Manager: Loaded");
+        getLogger().info("Level Manager: Loaded");
+        getLogger().info("EXP Reward Manager: Loaded");
+        getLogger().info("Leaderboard Manager: Loaded");
+        getLogger().info("Feature Manager: Loaded");
+        getLogger().info("GUI Manager: Loaded");
+        getLogger().info("Feature GUI Manager: Loaded");
+        getLogger().info("Listeners: Registered");
+        getLogger().info(
+                "PlaceholderAPI: "
+                        + (placeholder != null ? "Registered" : "Not Installed")
+        );
+        getLogger().info("==================================");
     }
 
     @Override
@@ -236,4 +244,4 @@ public final class VortexKingdom extends JavaPlugin {
     public FileConfiguration getExpConfig() {
         return expConfig;
     }
-}
+    }
