@@ -1,4 +1,3 @@
-
 package my.kingdomvortex.vortexkingdom.database;
 
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
@@ -21,9 +20,9 @@ public final class DatabaseManager {
         this.plugin = plugin;
     }
 
-    // ==========================================
-    // DATABASE CONNECTION
-    // ==========================================
+    // ==================================================
+    // CONNECTION
+    // ==================================================
 
     public synchronized void connect() {
         if (isConnected()) {
@@ -39,44 +38,40 @@ public final class DatabaseManager {
                 );
             }
 
-            String databaseFile = plugin.getConfig().getString(
+            String fileName = plugin.getConfig().getString(
                     "database.file",
                     "kingdoms.db"
             );
 
-            if (databaseFile == null || databaseFile.isBlank()) {
+            if (fileName == null || fileName.isBlank()) {
                 throw new IllegalArgumentException(
                         "Database filename cannot be empty."
                 );
             }
 
-            File database = new File(folder, databaseFile)
+            File databaseFile = new File(folder, fileName)
                     .getCanonicalFile();
 
             if (!folder.getCanonicalFile().equals(
-                    database.getParentFile())) {
+                    databaseFile.getParentFile())) {
                 throw new IllegalArgumentException(
-                        "Invalid database file path."
+                        "Database path must remain inside plugin folder."
                 );
             }
 
             Class.forName("org.sqlite.JDBC");
 
             connection = DriverManager.getConnection(
-                    "jdbc:sqlite:" + database.getAbsolutePath()
+                    "jdbc:sqlite:" + databaseFile.getAbsolutePath()
             );
 
             configureConnection();
-
             createTables();
-
-            // Migrasi wajib dijalankan sebelum pembuatan index.
             runMigrations();
-
             createIndexes();
 
             plugin.getLogger().info(
-                    "SQLite database connected successfully!"
+                    "SQLite database connected successfully."
             );
 
         } catch (Exception exception) {
@@ -84,7 +79,7 @@ public final class DatabaseManager {
 
             plugin.getLogger().log(
                     Level.SEVERE,
-                    "Failed to initialize SQLite database!",
+                    "Failed to initialize SQLite database.",
                     exception
             );
 
@@ -106,241 +101,218 @@ public final class DatabaseManager {
         }
     }
 
-    // ==========================================
+    // ==================================================
     // TABLES
-    // ==========================================
+    // ==================================================
 
     private void createTables() throws SQLException {
         try (Statement statement = connection.createStatement()) {
 
             statement.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS kingdoms (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL COLLATE NOCASE UNIQUE,
-                    owner_uuid TEXT NOT NULL,
-                    level INTEGER NOT NULL DEFAULT 1,
-                    experience INTEGER NOT NULL DEFAULT 0,
-                    total_experience INTEGER NOT NULL DEFAULT 0,
-                    total_kills INTEGER NOT NULL DEFAULT 0,
-                    description TEXT NOT NULL DEFAULT '',
-                    pvp_enabled INTEGER NOT NULL DEFAULT 0,
-                    home_world TEXT,
-                    home_x DOUBLE,
-                    home_y DOUBLE,
-                    home_z DOUBLE,
-                    home_yaw FLOAT,
-                    home_pitch FLOAT,
-                    created_at INTEGER NOT NULL DEFAULT 0,
-                    updated_at INTEGER NOT NULL DEFAULT 0
-                )
-                """);
-
-            statement.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS kingdom_members (
-                    kingdom_id INTEGER NOT NULL,
-                    player_uuid TEXT NOT NULL UNIQUE,
-                    player_name TEXT NOT NULL,
-                    role TEXT NOT NULL DEFAULT 'MEMBER',
-                    joined_at INTEGER NOT NULL,
-                    PRIMARY KEY (kingdom_id, player_uuid),
-                    FOREIGN KEY (kingdom_id)
-                        REFERENCES kingdoms(id)
-                        ON DELETE CASCADE
-                )
-                """);
-
-            statement.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS kingdom_invitations (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    kingdom_id INTEGER NOT NULL,
-                    inviter_uuid TEXT NOT NULL,
-                    target_uuid TEXT NOT NULL,
-                    created_at INTEGER NOT NULL,
-                    expires_at INTEGER NOT NULL,
-                    UNIQUE (kingdom_id, target_uuid),
-                    FOREIGN KEY (kingdom_id)
-                        REFERENCES kingdoms(id)
-                        ON DELETE CASCADE
-                )
-                """);
-
-            statement.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS kingdom_daily_exp (
-                    player_uuid TEXT NOT NULL,
-                    date TEXT NOT NULL,
-                    experience INTEGER NOT NULL DEFAULT 0,
-                    PRIMARY KEY (player_uuid, date)
-                )
-                """);
-
-            statement.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS kingdom_exp_cooldowns (
-                    player_uuid TEXT PRIMARY KEY,
-                    last_reward_at INTEGER NOT NULL
-                )
-                """);
-
-            statement.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS kingdom_exp_source_cooldowns (
-                    player_uuid TEXT NOT NULL,
-                    source TEXT NOT NULL,
-                    last_reward_at INTEGER NOT NULL,
-                    PRIMARY KEY (player_uuid, source)
-                )
-                """);
-
-            statement.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS kingdom_exp_activity (
-                    player_uuid TEXT NOT NULL,
-                    source TEXT NOT NULL,
-                    action_key TEXT NOT NULL,
-                    action_count INTEGER NOT NULL DEFAULT 0,
-                    window_started INTEGER NOT NULL,
-                    last_reward_at INTEGER NOT NULL DEFAULT 0,
-                    PRIMARY KEY (
-                        player_uuid,
-                        source,
-                        action_key
+                    CREATE TABLE IF NOT EXISTS kingdoms (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+                        owner_uuid TEXT NOT NULL,
+                        level INTEGER NOT NULL DEFAULT 1,
+                        experience INTEGER NOT NULL DEFAULT 0,
+                        total_experience INTEGER NOT NULL DEFAULT 0,
+                        total_kills INTEGER NOT NULL DEFAULT 0,
+                        description TEXT NOT NULL DEFAULT '',
+                        pvp_enabled INTEGER NOT NULL DEFAULT 0,
+                        home_world TEXT,
+                        home_x REAL,
+                        home_y REAL,
+                        home_z REAL,
+                        home_yaw REAL,
+                        home_pitch REAL,
+                        created_at INTEGER NOT NULL DEFAULT 0,
+                        updated_at INTEGER NOT NULL DEFAULT 0
                     )
-                )
-                """);
+                    """);
 
             statement.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS kingdom_statistics (
-                    kingdom_id INTEGER PRIMARY KEY,
-                    total_mob_kills INTEGER NOT NULL DEFAULT 0,
-                    total_boss_kills INTEGER NOT NULL DEFAULT 0,
-                    total_blocks_mined INTEGER NOT NULL DEFAULT 0,
-                    total_blocks_placed INTEGER NOT NULL DEFAULT 0,
-                    total_quests_completed INTEGER NOT NULL DEFAULT 0,
-                    FOREIGN KEY (kingdom_id)
-                        REFERENCES kingdoms(id)
-                        ON DELETE CASCADE
-                )
-                """);
+                    CREATE TABLE IF NOT EXISTS kingdom_members (
+                        kingdom_id INTEGER NOT NULL,
+                        player_uuid TEXT NOT NULL UNIQUE,
+                        player_name TEXT NOT NULL,
+                        role TEXT NOT NULL DEFAULT 'MEMBER',
+                        joined_at INTEGER NOT NULL,
+                        PRIMARY KEY (kingdom_id, player_uuid),
+                        FOREIGN KEY (kingdom_id)
+                            REFERENCES kingdoms(id)
+                            ON DELETE CASCADE
+                    )
+                    """);
 
             statement.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS kingdom_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    kingdom_id INTEGER,
-                    player_uuid TEXT,
-                    action TEXT NOT NULL,
-                    details TEXT DEFAULT '',
-                    created_at INTEGER NOT NULL
-                )
-                """);
+                    CREATE TABLE IF NOT EXISTS kingdom_invitations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        kingdom_id INTEGER NOT NULL,
+                        inviter_uuid TEXT NOT NULL,
+                        target_uuid TEXT NOT NULL,
+                        created_at INTEGER NOT NULL,
+                        expires_at INTEGER NOT NULL,
+                        UNIQUE (kingdom_id, target_uuid),
+                        FOREIGN KEY (kingdom_id)
+                            REFERENCES kingdoms(id)
+                            ON DELETE CASCADE
+                    )
+                    """);
 
             statement.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS kingdom_database_version (
-                    id INTEGER PRIMARY KEY CHECK (id = 1),
-                    version INTEGER NOT NULL
-                )
-                """);
+                    CREATE TABLE IF NOT EXISTS kingdom_daily_exp (
+                        player_uuid TEXT NOT NULL,
+                        date TEXT NOT NULL,
+                        experience INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY (player_uuid, date)
+                    )
+                    """);
 
             statement.executeUpdate("""
-                INSERT OR IGNORE INTO kingdom_database_version
-                (id, version)
-                VALUES (1, 1)
-                """);
+                    CREATE TABLE IF NOT EXISTS kingdom_exp_cooldowns (
+                        player_uuid TEXT PRIMARY KEY,
+                        last_reward_at INTEGER NOT NULL
+                    )
+                    """);
+
+            statement.executeUpdate("""
+                    CREATE TABLE IF NOT EXISTS kingdom_exp_source_cooldowns (
+                        player_uuid TEXT NOT NULL,
+                        source TEXT NOT NULL,
+                        last_reward_at INTEGER NOT NULL,
+                        PRIMARY KEY (player_uuid, source)
+                    )
+                    """);
+
+            statement.executeUpdate("""
+                    CREATE TABLE IF NOT EXISTS kingdom_exp_activity (
+                        player_uuid TEXT NOT NULL,
+                        source TEXT NOT NULL,
+                        action_key TEXT NOT NULL,
+                        action_count INTEGER NOT NULL DEFAULT 0,
+                        window_started INTEGER NOT NULL,
+                        last_reward_at INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY (player_uuid, source, action_key)
+                    )
+                    """);
+
+            statement.executeUpdate("""
+                    CREATE TABLE IF NOT EXISTS kingdom_statistics (
+                        kingdom_id INTEGER PRIMARY KEY,
+                        total_mob_kills INTEGER NOT NULL DEFAULT 0,
+                        total_boss_kills INTEGER NOT NULL DEFAULT 0,
+                        total_blocks_mined INTEGER NOT NULL DEFAULT 0,
+                        total_blocks_placed INTEGER NOT NULL DEFAULT 0,
+                        total_quests_completed INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY (kingdom_id)
+                            REFERENCES kingdoms(id)
+                            ON DELETE CASCADE
+                    )
+                    """);
+
+            statement.executeUpdate("""
+                    CREATE TABLE IF NOT EXISTS kingdom_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        kingdom_id INTEGER,
+                        player_uuid TEXT,
+                        action TEXT NOT NULL,
+                        details TEXT DEFAULT '',
+                        created_at INTEGER NOT NULL
+                    )
+                    """);
+
+            statement.executeUpdate("""
+                    CREATE TABLE IF NOT EXISTS kingdom_database_version (
+                        id INTEGER PRIMARY KEY CHECK (id = 1),
+                        version INTEGER NOT NULL
+                    )
+                    """);
+
+            statement.executeUpdate("""
+                    INSERT OR IGNORE INTO kingdom_database_version
+                    (id, version)
+                    VALUES (1, 1)
+                    """);
         }
     }
 
-    // ==========================================
-    // DATABASE MIGRATIONS
-    // ==========================================
+    // ==================================================
+    // MIGRATIONS
+    // ==================================================
 
     private void runMigrations() throws SQLException {
-        int version = getDatabaseVersion();
+        addColumnIfMissing(
+                "kingdoms", "updated_at",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
 
-        if (version < 2) {
-            addColumnIfMissing(
-                    "kingdoms",
-                    "updated_at",
-                    "INTEGER NOT NULL DEFAULT 0"
-            );
+        addColumnIfMissing(
+                "kingdoms", "description",
+                "TEXT NOT NULL DEFAULT ''"
+        );
 
-            setDatabaseVersion(2);
-        }
+        addColumnIfMissing(
+                "kingdoms", "pvp_enabled",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
 
-        if (version < 3) {
-            addColumnIfMissing(
-                    "kingdoms",
-                    "description",
-                    "TEXT NOT NULL DEFAULT ''"
-            );
+        addColumnIfMissing(
+                "kingdoms", "total_experience",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
 
-            addColumnIfMissing(
-                    "kingdoms",
-                    "pvp_enabled",
-                    "INTEGER NOT NULL DEFAULT 0"
-            );
+        addColumnIfMissing(
+                "kingdoms", "total_kills",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
 
-            setDatabaseVersion(3);
-        }
+        addColumnIfMissing("kingdoms", "home_world", "TEXT");
+        addColumnIfMissing("kingdoms", "home_x", "REAL");
+        addColumnIfMissing("kingdoms", "home_y", "REAL");
+        addColumnIfMissing("kingdoms", "home_z", "REAL");
+        addColumnIfMissing("kingdoms", "home_yaw", "REAL");
+        addColumnIfMissing("kingdoms", "home_pitch", "REAL");
 
-        if (version < 4) {
-            // EXP dan statistik Kingdom.
-            addColumnIfMissing(
-                    "kingdoms",
-                    "total_experience",
-                    "INTEGER NOT NULL DEFAULT 0"
-            );
+        addColumnIfMissing(
+                "kingdoms", "created_at",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
 
-            addColumnIfMissing(
-                    "kingdoms",
-                    "total_kills",
-                    "INTEGER NOT NULL DEFAULT 0"
-            );
+        addColumnIfMissing(
+                "kingdom_statistics", "total_mob_kills",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
 
-            // Kingdom home.
-            addColumnIfMissing(
-                    "kingdoms",
-                    "home_world",
-                    "TEXT"
-            );
+        addColumnIfMissing(
+                "kingdom_statistics", "total_boss_kills",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
 
-            addColumnIfMissing(
-                    "kingdoms",
-                    "home_x",
-                    "DOUBLE"
-            );
+        addColumnIfMissing(
+                "kingdom_statistics", "total_blocks_mined",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
 
-            addColumnIfMissing(
-                    "kingdoms",
-                    "home_y",
-                    "DOUBLE"
-            );
+        addColumnIfMissing(
+                "kingdom_statistics", "total_blocks_placed",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
 
-            addColumnIfMissing(
-                    "kingdoms",
-                    "home_z",
-                    "DOUBLE"
-            );
+        addColumnIfMissing(
+                "kingdom_statistics", "total_quests_completed",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
 
-            addColumnIfMissing(
-                    "kingdoms",
-                    "home_yaw",
-                    "FLOAT"
-            );
-
-            addColumnIfMissing(
-                    "kingdoms",
-                    "home_pitch",
-                    "FLOAT"
-            );
-
-            addColumnIfMissing(
-                    "kingdoms",
-                    "created_at",
-                    "INTEGER NOT NULL DEFAULT 0"
-            );
-
-            setDatabaseVersion(4);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    UPDATE kingdom_database_version
+                    SET version = 5
+                    WHERE id = 1
+                    """);
         }
 
         plugin.getLogger().info(
-                "Database migration completed. Version: "
-                        + getDatabaseVersion()
+                "Database migrations completed. Version: 5"
         );
     }
 
@@ -377,108 +349,73 @@ public final class DatabaseManager {
         }
     }
 
-    private int getDatabaseVersion() throws SQLException {
-        try (Statement statement = connection.createStatement();
-             ResultSet result = statement.executeQuery(
-                     """
-                     SELECT version
-                     FROM kingdom_database_version
-                     WHERE id = 1
-                     """
-             )) {
-
-            if (result.next()) {
-                return result.getInt("version");
-            }
-        }
-
-        return 1;
-    }
-
-    private void setDatabaseVersion(int version)
-            throws SQLException {
-
-        try (PreparedStatement statement =
-                     connection.prepareStatement(
-                             """
-                             UPDATE kingdom_database_version
-                             SET version = ?
-                             WHERE id = 1
-                             """
-                     )) {
-
-            statement.setInt(1, version);
-            statement.executeUpdate();
-        }
-    }
-
-    // ==========================================
+    // ==================================================
     // INDEXES
-    // ==========================================
+    // ==================================================
 
     private void createIndexes() throws SQLException {
         try (Statement statement = connection.createStatement()) {
 
             statement.executeUpdate("""
-                CREATE INDEX IF NOT EXISTS idx_kingdom_level
-                ON kingdoms(level DESC, total_experience DESC)
-                """);
+                    CREATE INDEX IF NOT EXISTS idx_kingdom_level
+                    ON kingdoms(level DESC)
+                    """);
 
             statement.executeUpdate("""
-                CREATE INDEX IF NOT EXISTS idx_kingdom_exp
-                ON kingdoms(total_experience DESC)
-                """);
+                    CREATE INDEX IF NOT EXISTS idx_kingdom_exp
+                    ON kingdoms(total_experience DESC)
+                    """);
 
             statement.executeUpdate("""
-                CREATE INDEX IF NOT EXISTS idx_kingdom_kills
-                ON kingdoms(total_kills DESC)
-                """);
+                    CREATE INDEX IF NOT EXISTS idx_kingdom_kills
+                    ON kingdoms(total_kills DESC)
+                    """);
 
             statement.executeUpdate("""
-                CREATE INDEX IF NOT EXISTS idx_kingdom_members
-                ON kingdom_members(kingdom_id)
-                """);
+                    CREATE INDEX IF NOT EXISTS idx_kingdom_members
+                    ON kingdom_members(kingdom_id)
+                    """);
 
             statement.executeUpdate("""
-                CREATE INDEX IF NOT EXISTS idx_kingdom_owner
-                ON kingdoms(owner_uuid)
-                """);
+                    CREATE INDEX IF NOT EXISTS idx_kingdom_owner
+                    ON kingdoms(owner_uuid)
+                    """);
 
             statement.executeUpdate("""
-                CREATE INDEX IF NOT EXISTS idx_kingdom_member_name
-                ON kingdom_members(player_name)
-                """);
+                    CREATE INDEX IF NOT EXISTS idx_kingdom_member_name
+                    ON kingdom_members(player_name)
+                    """);
 
             statement.executeUpdate("""
-                CREATE INDEX IF NOT EXISTS idx_kingdom_invitation_target
-                ON kingdom_invitations(target_uuid, expires_at)
-                """);
+                    CREATE INDEX IF NOT EXISTS idx_kingdom_invitation_target
+                    ON kingdom_invitations(target_uuid, expires_at)
+                    """);
 
             statement.executeUpdate("""
-                CREATE INDEX IF NOT EXISTS idx_kingdom_daily_exp
-                ON kingdom_daily_exp(date, player_uuid)
-                """);
+                    CREATE INDEX IF NOT EXISTS idx_kingdom_daily_exp
+                    ON kingdom_daily_exp(date, player_uuid)
+                    """);
 
             statement.executeUpdate("""
-                CREATE INDEX IF NOT EXISTS idx_kingdom_activity
-                ON kingdom_exp_activity(player_uuid, source)
-                """);
+                    CREATE INDEX IF NOT EXISTS idx_kingdom_activity
+                    ON kingdom_exp_activity(player_uuid, source)
+                    """);
 
             statement.executeUpdate("""
-                CREATE INDEX IF NOT EXISTS idx_kingdom_logs
-                ON kingdom_logs(kingdom_id, created_at DESC)
-                """);
+                    CREATE INDEX IF NOT EXISTS idx_kingdom_logs
+                    ON kingdom_logs(kingdom_id, created_at DESC)
+                    """);
         }
     }
 
-    // ==========================================
+    // ==================================================
     // CONNECTION ACCESS
-    // ==========================================
+    // ==================================================
 
     public synchronized Connection getConnection() {
         if (!isConnected()) {
             throw new IllegalStateException(
-                    "Database is not connected!"
+                    "Database is not connected."
             );
         }
 
@@ -493,16 +430,16 @@ public final class DatabaseManager {
         }
     }
 
-    // ==========================================
-    // TRANSACTION SUPPORT
-    // ==========================================
+    // ==================================================
+    // TRANSACTIONS
+    // ==================================================
 
     public synchronized void beginTransaction()
             throws SQLException {
 
         if (!isConnected()) {
             throw new IllegalStateException(
-                    "Database is not connected!"
+                    "Database is not connected."
             );
         }
 
@@ -516,7 +453,11 @@ public final class DatabaseManager {
     }
 
     public synchronized void commit() throws SQLException {
-        if (isConnected() && !connection.getAutoCommit()) {
+        if (!isConnected()) {
+            return;
+        }
+
+        if (!connection.getAutoCommit()) {
             connection.commit();
             connection.setAutoCommit(true);
         }
@@ -531,15 +472,15 @@ public final class DatabaseManager {
         } catch (SQLException exception) {
             plugin.getLogger().log(
                     Level.SEVERE,
-                    "Failed to rollback transaction.",
+                    "Failed to rollback database transaction.",
                     exception
             );
         }
     }
 
-    // ==========================================
-    // DATABASE MAINTENANCE
-    // ==========================================
+    // ==================================================
+    // MAINTENANCE
+    // ==================================================
 
     public synchronized void optimize() {
         if (!isConnected()) {
@@ -548,11 +489,6 @@ public final class DatabaseManager {
 
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA optimize");
-
-            plugin.getLogger().info(
-                    "Database optimization completed."
-            );
-
         } catch (SQLException exception) {
             plugin.getLogger().log(
                     Level.WARNING,
@@ -568,10 +504,7 @@ public final class DatabaseManager {
         }
 
         try (Statement statement = connection.createStatement()) {
-            statement.execute(
-                    "PRAGMA wal_checkpoint(PASSIVE)"
-            );
-
+            statement.execute("PRAGMA wal_checkpoint(PASSIVE)");
         } catch (SQLException exception) {
             plugin.getLogger().log(
                     Level.WARNING,
@@ -581,9 +514,9 @@ public final class DatabaseManager {
         }
     }
 
-    // ==========================================
+    // ==================================================
     // DISCONNECT
-    // ==========================================
+    // ==================================================
 
     public synchronized void disconnect() {
         if (connection == null) {
@@ -592,7 +525,6 @@ public final class DatabaseManager {
 
         try {
             if (!connection.isClosed()) {
-
                 if (!connection.getAutoCommit()) {
                     connection.rollback();
                     connection.setAutoCommit(true);
@@ -609,7 +541,7 @@ public final class DatabaseManager {
             }
 
             plugin.getLogger().info(
-                    "SQLite database disconnected successfully."
+                    "SQLite database disconnected."
             );
 
         } catch (SQLException exception) {
@@ -618,9 +550,8 @@ public final class DatabaseManager {
                     "Failed to disconnect database.",
                     exception
             );
-
         } finally {
             connection = null;
         }
     }
-}
+        }
