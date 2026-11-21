@@ -10,7 +10,6 @@ import my.kingdomvortex.vortexkingdom.gui.KingdomLeaderboardGUIManager;
 import my.kingdomvortex.vortexkingdom.level.ExpRewardManager;
 import my.kingdomvortex.vortexkingdom.level.KingdomLevelManager;
 import my.kingdomvortex.vortexkingdom.listener.KingdomExpListener;
-import my.kingdomvortex.vortexkingdom.listener.KingdomFeatureEntryListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomFeatureListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomGUIListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomLeaderboardGUIListener;
@@ -69,7 +68,7 @@ public final class VortexKingdom extends JavaPlugin {
             featureGUIManager = new KingdomFeatureGUIManager(this);
 
             getServer().getPluginManager().registerEvents(
-                    new KingdomGUIListener(this, guiManager),
+                    new KingdomGUIListener(this, guiManager, featureGUIManager),
                     this
             );
 
@@ -84,12 +83,7 @@ public final class VortexKingdom extends JavaPlugin {
             );
 
             getServer().getPluginManager().registerEvents(
-                    new KingdomFeatureListener(this),
-                    this
-            );
-
-            getServer().getPluginManager().registerEvents(
-                    new KingdomFeatureEntryListener(this),
+                    new KingdomFeatureListener(this, featureGUIManager),
                     this
             );
 
