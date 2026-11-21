@@ -2,13 +2,13 @@
 package my.kingdomvortex.vortexkingdom.listener;
 
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
-import my.kingdomvortex.vortexkingdom.kingdom.Kingdom;
 
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Monster;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -19,13 +19,16 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.util.EnumSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 public final class KingdomExpListener implements Listener {
 
     private final VortexKingdom plugin;
+
+    // ==================================================
+    // FARMING MATERIALS
+    // ==================================================
 
     private static final Set<Material> FARM_CROPS = EnumSet.of(
             Material.WHEAT,
@@ -41,6 +44,10 @@ public final class KingdomExpListener implements Listener {
             Material.PITCHER_CROP
     );
 
+    // ==================================================
+    // BOSS REWARDS
+    // ==================================================
+
     private static final Map<EntityType, String> BOSS_REWARDS = Map.of(
             EntityType.ENDER_DRAGON, "ender-dragon",
             EntityType.WITHER, "wither",
@@ -52,30 +59,47 @@ public final class KingdomExpListener implements Listener {
         this.plugin = plugin;
     }
 
+    // ==================================================
+    // MINING EXP
+    // ==================================================
+
     @EventHandler(
             priority = EventPriority.MONITOR,
             ignoreCancelled = true
     )
     public void onMining(BlockBreakEvent event) {
+
+        Player player = event.getPlayer();
         Block block = event.getBlock();
         Material material = block.getType();
 
-        if (material.isAir() || FARM_CROPS.contains(material)) {
+        if (material.isAir()) {
+            return;
+        }
+
+        // Tanaman tidak mendapatkan mining EXP.
+        if (FARM_CROPS.contains(material)) {
             return;
         }
 
         plugin.getExpRewardManager().award(
-                event.getPlayer().getUniqueId(),
+                player.getUniqueId(),
                 "mining",
                 material.name()
         );
     }
+
+    // ==================================================
+    // FARMING EXP
+    // ==================================================
 
     @EventHandler(
             priority = EventPriority.MONITOR,
             ignoreCancelled = true
     )
     public void onFarming(BlockBreakEvent event) {
+
+        Player player = event.getPlayer();
         Block block = event.getBlock();
         Material material = block.getType();
 
@@ -83,6 +107,15 @@ public final class KingdomExpListener implements Listener {
             return;
         }
 
+        // Melon dan Pumpkin tidak menggunakan Ageable.
+        if (material == Material.MELON
+                || material == Material.PUMPKIN) {
+
+            awardFarming(player.getUniqueId(), material);
+            return;
+        }
+
+        // Tanaman lainnya harus sudah matang.
         if (!(block.getBlockData() instanceof Ageable ageable)) {
             return;
         }
@@ -91,84 +124,122 @@ public final class KingdomExpListener implements Listener {
             return;
         }
 
+        awardFarming(player.getUniqueId(), material);
+    }
+
+    private void awardFarming(UUID player, Material material) {
+
         plugin.getExpRewardManager().award(
-                event.getPlayer().getUniqueId(),
+                player,
                 "farming",
                 material.name()
         );
     }
+
+    // ==================================================
+    // MONSTER / BOSS KILL
+    // ==================================================
 
     @EventHandler(
             priority = EventPriority.MONITOR,
             ignoreCancelled = true
     )
     public void onMonsterKill(EntityDeathEvent event) {
-        if (event.getEntity().getKiller() == null) {
+
+        Player killer = event.getEntity().getKiller();
+
+        if (killer == null) {
             return;
         }
 
-        UUID player = event.getEntity().getKiller().getUniqueId();
         EntityType type = event.getEntityType();
 
-        // Catat kill Kingdom.
-        recordKingdomKill(player);
-
-        // Boss menggunakan reward khusus.
+        // Periksa apakah target merupakan boss.
         String bossKey = BOSS_REWARDS.get(type);
 
         if (bossKey != null) {
+
+            // Boss kill masuk statistik Kingdom.
+            recordKingdomKill(killer.getUniqueId());
+
+            // Boss menggunakan reward khusus.
             plugin.getExpRewardManager().award(
-                    player,
+                    killer.getUniqueId(),
                     "boss-kill",
                     "boss:" + bossKey
             );
+
             return;
         }
 
         // Monster biasa.
-        if (event.getEntity() instanceof Monster) {
-            plugin.getExpRewardManager().award(
-                    player,
-                    "monster-kill",
-                    type.name()
-            );
-        }
-    }
-
-    private void recordKingdomKill(UUID player) {
-        Optional<Kingdom> optional =
-                plugin.getKingdomManager()
-                        .getKingdomByPlayer(player);
-
-        if (optional.isEmpty()) {
+        if (!(event.getEntity() instanceof Monster)) {
             return;
         }
 
-        Kingdom kingdom = optional.get();
+        // Catat kill monster.
+        recordKingdomKill(killer.getUniqueId());
+
+        // Berikan EXP monster.
+        plugin.getExpRewardManager().award(
+                killer.getUniqueId(),
+                "monster-kill",
+                type.name()
+        );
+    }
+
+    // ==================================================
+    // KINGDOM KILL STATISTICS
+    // ==================================================
+
+    private void recordKingdomKill(UUID player) {
+
+        if (player == null) {
+            return;
+        }
 
         String sql = """
                 UPDATE kingdoms
-                SET total_kills = total_kills + 1
-                WHERE id = ?
+                SET total_kills = total_kills + 1,
+                    updated_at = ?
+                WHERE id = (
+                    SELECT kingdom_id
+                    FROM kingdom_members
+                    WHERE player_uuid = ?
+                    LIMIT 1
+                )
                 """;
 
         try {
+
             Connection connection =
                     plugin.getDatabaseManager().getConnection();
 
             synchronized (connection) {
+
                 try (PreparedStatement statement =
                              connection.prepareStatement(sql)) {
 
-                    statement.setInt(1, kingdom.getId());
+                    statement.setLong(
+                            1,
+                            System.currentTimeMillis()
+                    );
+
+                    statement.setString(
+                            2,
+                            player.toString()
+                    );
+
                     statement.executeUpdate();
                 }
             }
 
         } catch (Exception exception) {
-            plugin.getLogger().severe(
-                    "Failed to record Kingdom kill: "
-                            + exception.getMessage()
+
+            plugin.getLogger().log(
+                    java.util.logging.Level.SEVERE,
+                    "Failed to record Kingdom kill for " + player,
+                    exception
             );
         }
     }
