@@ -3,6 +3,7 @@ package my.kingdomvortex.vortexkingdom;
 
 import my.kingdomvortex.vortexkingdom.command.KingdomCommand;
 import my.kingdomvortex.vortexkingdom.database.DatabaseManager;
+import my.kingdomvortex.vortexkingdom.level.ExpRewardManager;
 import my.kingdomvortex.vortexkingdom.level.KingdomLevelManager;
 import my.kingdomvortex.vortexkingdom.manager.KingdomManager;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -19,6 +20,7 @@ public final class VortexKingdom extends JavaPlugin {
     private DatabaseManager databaseManager;
     private KingdomManager kingdomManager;
     private KingdomLevelManager levelManager;
+    private ExpRewardManager expRewardManager;
 
     private FileConfiguration expConfig;
     private File expFile;
@@ -35,11 +37,12 @@ public final class VortexKingdom extends JavaPlugin {
             databaseManager.connect();
 
             kingdomManager = new KingdomManager(
-                    this,
-                    databaseManager
+                    this, databaseManager
             );
 
             levelManager = new KingdomLevelManager(this);
+
+            expRewardManager = new ExpRewardManager(this);
 
             registerCommands();
 
@@ -54,15 +57,11 @@ public final class VortexKingdom extends JavaPlugin {
             return;
         }
 
-        getLogger().info("==================================");
-        getLogger().info("       VORTEX KINGDOM");
-        getLogger().info("==================================");
-        getLogger().info("Version: " + getPluginMeta().getVersion());
+        getLogger().info("VortexKingdom successfully enabled!");
         getLogger().info("Database: Connected");
         getLogger().info("Kingdom Manager: Loaded");
         getLogger().info("Level Manager: Loaded");
-        getLogger().info("EXP Configuration: Loaded");
-        getLogger().info("==================================");
+        getLogger().info("EXP Reward Manager: Loaded");
     }
 
     private void loadExpConfig() {
@@ -84,7 +83,7 @@ public final class VortexKingdom extends JavaPlugin {
 
         if (command == null) {
             throw new IllegalStateException(
-                    "Command 'kingdom' is missing from plugin.yml!"
+                    "Missing kingdom command in plugin.yml"
             );
         }
 
@@ -100,7 +99,6 @@ public final class VortexKingdom extends JavaPlugin {
             databaseManager.disconnect();
         }
 
-        getLogger().info("VortexKingdom disabled.");
         instance = null;
     }
 
@@ -118,6 +116,10 @@ public final class VortexKingdom extends JavaPlugin {
 
     public KingdomLevelManager getLevelManager() {
         return levelManager;
+    }
+
+    public ExpRewardManager getExpRewardManager() {
+        return expRewardManager;
     }
 
     public FileConfiguration getExpConfig() {
