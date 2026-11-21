@@ -1,13 +1,14 @@
-
 package my.kingdomvortex.vortexkingdom;
 
 import my.kingdomvortex.vortexkingdom.command.KingdomCommand;
 import my.kingdomvortex.vortexkingdom.database.DatabaseManager;
 import my.kingdomvortex.vortexkingdom.gui.KingdomGUIManager;
+import my.kingdomvortex.vortexkingdom.gui.KingdomLeaderboardGUIManager;
 import my.kingdomvortex.vortexkingdom.level.ExpRewardManager;
 import my.kingdomvortex.vortexkingdom.level.KingdomLevelManager;
 import my.kingdomvortex.vortexkingdom.listener.KingdomExpListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomGUIListener;
+import my.kingdomvortex.vortexkingdom.listener.KingdomLeaderboardGUIListener;
 import my.kingdomvortex.vortexkingdom.manager.KingdomLeaderboardManager;
 import my.kingdomvortex.vortexkingdom.manager.KingdomManager;
 import my.kingdomvortex.vortexkingdom.placeholder.KingdomPlaceholder;
@@ -28,7 +29,10 @@ public final class VortexKingdom extends JavaPlugin {
     private KingdomLevelManager levelManager;
     private ExpRewardManager expRewardManager;
     private KingdomLeaderboardManager leaderboardManager;
+
     private KingdomGUIManager guiManager;
+    private KingdomLeaderboardGUIManager leaderboardGUIManager;
+
     private KingdomPlaceholder placeholder;
 
     private FileConfiguration expConfig;
@@ -53,7 +57,10 @@ public final class VortexKingdom extends JavaPlugin {
             levelManager = new KingdomLevelManager(this);
             expRewardManager = new ExpRewardManager(this);
             leaderboardManager = new KingdomLeaderboardManager(this);
+
             guiManager = new KingdomGUIManager(this);
+            leaderboardGUIManager =
+                    new KingdomLeaderboardGUIManager(this);
 
             getServer().getPluginManager().registerEvents(
                     new KingdomGUIListener(this, guiManager),
@@ -62,6 +69,11 @@ public final class VortexKingdom extends JavaPlugin {
 
             getServer().getPluginManager().registerEvents(
                     new KingdomExpListener(this),
+                    this
+            );
+
+            getServer().getPluginManager().registerEvents(
+                    new KingdomLeaderboardGUIListener(this),
                     this
             );
 
@@ -92,9 +104,11 @@ public final class VortexKingdom extends JavaPlugin {
         getLogger().info("EXP Reward Manager: Loaded");
         getLogger().info("Leaderboard Manager: Loaded");
         getLogger().info("GUI Manager: Loaded");
-        getLogger().info("EXP Listener: Registered");
-        getLogger().info("PlaceholderAPI: "
-                + (placeholder != null ? "Registered" : "Not Installed"));
+        getLogger().info("Listeners: Registered");
+        getLogger().info(
+                "PlaceholderAPI: "
+                        + (placeholder != null ? "Registered" : "Not Installed")
+        );
         getLogger().info("==================================");
     }
 
@@ -126,7 +140,7 @@ public final class VortexKingdom extends JavaPlugin {
             );
         }
 
-        KingdomCommand executor = new KingdomCommand();
+        KingdomCommand executor = new KingdomCommand(this);
 
         command.setExecutor(executor);
         command.setTabCompleter(executor);
@@ -144,8 +158,10 @@ public final class VortexKingdom extends JavaPlugin {
         placeholder = new KingdomPlaceholder(this);
 
         if (!placeholder.register()) {
-            throw new IllegalStateException(
-                    "Failed to register Kingdom PlaceholderAPI expansion!"
+            placeholder = null;
+
+            getLogger().warning(
+                    "Failed to register Kingdom PlaceholderAPI expansion."
             );
         }
     }
@@ -162,6 +178,7 @@ public final class VortexKingdom extends JavaPlugin {
         }
 
         getLogger().info("VortexKingdom disabled.");
+
         instance = null;
     }
 
@@ -193,7 +210,11 @@ public final class VortexKingdom extends JavaPlugin {
         return guiManager;
     }
 
+    public KingdomLeaderboardGUIManager getLeaderboardGUIManager() {
+        return leaderboardGUIManager;
+    }
+
     public FileConfiguration getExpConfig() {
         return expConfig;
     }
-}
+    }
