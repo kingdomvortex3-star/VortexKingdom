@@ -3,9 +3,14 @@ package my.kingdomvortex.vortexkingdom;
 
 import my.kingdomvortex.vortexkingdom.command.KingdomCommand;
 import my.kingdomvortex.vortexkingdom.database.DatabaseManager;
+import my.kingdomvortex.vortexkingdom.level.KingdomLevelManager;
 import my.kingdomvortex.vortexkingdom.manager.KingdomManager;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.io.File;
 
 public final class VortexKingdom extends JavaPlugin {
 
@@ -13,12 +18,17 @@ public final class VortexKingdom extends JavaPlugin {
 
     private DatabaseManager databaseManager;
     private KingdomManager kingdomManager;
+    private KingdomLevelManager levelManager;
+
+    private FileConfiguration expConfig;
+    private File expFile;
 
     @Override
     public void onEnable() {
         instance = this;
 
         saveDefaultConfig();
+        loadExpConfig();
 
         try {
             databaseManager = new DatabaseManager(this);
@@ -28,6 +38,8 @@ public final class VortexKingdom extends JavaPlugin {
                     this,
                     databaseManager
             );
+
+            levelManager = new KingdomLevelManager(this);
 
             registerCommands();
 
@@ -46,10 +58,25 @@ public final class VortexKingdom extends JavaPlugin {
         getLogger().info("       VORTEX KINGDOM");
         getLogger().info("==================================");
         getLogger().info("Version: " + getPluginMeta().getVersion());
-        getLogger().info("Database: SQLite Connected");
+        getLogger().info("Database: Connected");
         getLogger().info("Kingdom Manager: Loaded");
-        getLogger().info("Kingdom System enabled!");
+        getLogger().info("Level Manager: Loaded");
+        getLogger().info("EXP Configuration: Loaded");
         getLogger().info("==================================");
+    }
+
+    private void loadExpConfig() {
+        expFile = new File(getDataFolder(), "exp.yml");
+
+        if (!expFile.exists()) {
+            saveResource("exp.yml", false);
+        }
+
+        expConfig = YamlConfiguration.loadConfiguration(expFile);
+    }
+
+    public void reloadExpConfig() {
+        expConfig = YamlConfiguration.loadConfiguration(expFile);
     }
 
     private void registerCommands() {
@@ -74,7 +101,6 @@ public final class VortexKingdom extends JavaPlugin {
         }
 
         getLogger().info("VortexKingdom disabled.");
-
         instance = null;
     }
 
@@ -88,5 +114,13 @@ public final class VortexKingdom extends JavaPlugin {
 
     public KingdomManager getKingdomManager() {
         return kingdomManager;
+    }
+
+    public KingdomLevelManager getLevelManager() {
+        return levelManager;
+    }
+
+    public FileConfiguration getExpConfig() {
+        return expConfig;
     }
 }
