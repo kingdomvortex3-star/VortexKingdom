@@ -23,9 +23,7 @@ public final class ExpRewardManager {
     }
 
     /**
-     * Memberikan EXP kepada Kingdom milik player.
-     *
-     * @return jumlah EXP yang berhasil diberikan.
+     * Memberikan EXP kepada Kingdom.
      */
     public synchronized long award(
             UUID player,
@@ -36,8 +34,7 @@ public final class ExpRewardManager {
             return 0;
         }
 
-        String normalizedSource = source
-                .trim()
+        String normalizedSource = source.trim()
                 .toLowerCase(Locale.ROOT);
 
         String path = "sources." + normalizedSource + ".";
@@ -48,8 +45,13 @@ public final class ExpRewardManager {
             return 0;
         }
 
-        long baseReward = plugin.getExpConfig().getLong(
-                path + "exp", 0
+        /*
+         * Reward khusus boss.
+         * Contoh actionKey: boss:ender-dragon
+         */
+        long baseReward = resolveReward(
+                normalizedSource,
+                actionKey
         );
 
         if (baseReward <= 0) {
@@ -57,7 +59,8 @@ public final class ExpRewardManager {
         }
 
         Optional<Kingdom> optional =
-                plugin.getKingdomManager().getKingdomByPlayer(player);
+                plugin.getKingdomManager()
+                        .getKingdomByPlayer(player);
 
         if (optional.isEmpty()) {
             return 0;
@@ -89,7 +92,8 @@ public final class ExpRewardManager {
         try {
             ZoneId zone = ZoneId.of(
                     plugin.getExpConfig().getString(
-                            "settings.timezone", "Asia/Jakarta"
+                            "settings.timezone",
+                            "Asia/Jakarta"
                     )
             );
 
@@ -98,11 +102,6 @@ public final class ExpRewardManager {
             Connection connection =
                     plugin.getDatabaseManager().getConnection();
 
-            /*
-             * Semua proses reward menggunakan satu transaksi.
-             * Jika pemberian EXP gagal, penghitung aktivitas,
-             * daily EXP, dan cooldown ikut dibatalkan.
-             */
             synchronized (connection) {
                 boolean previousAutoCommit =
                         connection.getAutoCommit();
@@ -144,23 +143,23 @@ public final class ExpRewardManager {
 
                     boolean antiFarming = plugin.getExpConfig()
                             .getBoolean(
-                                    "anti-farming.enabled", true
+                                    "anti-farming.enabled",
+                                    true
                             );
 
                     if (antiFarming) {
-                        String key = normalizeActionKey(actionKey);
-
                         int count = registerActivity(
                                 connection,
                                 player,
                                 normalizedSource,
-                                key,
+                                normalizeActionKey(actionKey),
                                 now
                         );
 
                         int threshold = Math.max(0,
                                 plugin.getExpConfig().getInt(
-                                        "anti-farming.repeat-threshold", 5
+                                        "anti-farming.repeat-threshold",
+                                        5
                                 )
                         );
 
@@ -197,13 +196,11 @@ public final class ExpRewardManager {
                         }
                     }
 
-                    /*
-                     * Jangan menghitung EXP yang tidak mungkin
-                     * diterima karena Kingdom mencapai level maksimum.
-                     */
+                    reward = Math.min(reward, remainingDaily);
+
                     reward = calculateAcceptableExp(
                             kingdom,
-                            Math.min(reward, remainingDaily)
+                            reward
                     );
 
                     if (reward <= 0) {
@@ -211,10 +208,6 @@ public final class ExpRewardManager {
                         return 0;
                     }
 
-                    /*
-                     * addExp menggunakan koneksi database yang sama.
-                     * Perubahannya masih berada di transaksi ini.
-                     */
                     if (!plugin.getLevelManager().addExp(
                             player,
                             reward
@@ -262,8 +255,57 @@ public final class ExpRewardManager {
     }
 
     /**
-     * Menghitung EXP maksimum yang masih bisa diterima
-     * sebelum Kingdom mencapai level maksimal.
+     * Membaca reward berdasarkan sumber EXP.
+     */
+    private long resolveReward(
+            String source,
+            String actionKey
+    ) {
+        if (!source.equals("boss-kill")) {
+            return plugin.getExpConfig().getLong(
+                    "sources." + source + ".exp", 0
+            );
+        }
+
+        if (!plugin.getExpConfig().getBoolean(
+                "boss-rewards.enabled", true
+        )) {
+            return 0;
+        }
+
+        if (actionKey == null ||
+                !actionKey.toLowerCase(Locale.ROOT)
+                        .startsWith("boss:")) {
+            return 0;
+        }
+
+        String bossKey = actionKey.substring(5)
+                .trim()
+                .toLowerCase(Locale.ROOT);
+
+        if (bossKey.isBlank()) {
+            return 0;
+        }
+
+        String path = "boss-rewards." + bossKey + ".";
+
+        if (!plugin.getExpConfig().getBoolean(
+                path + "enabled", false
+        )) {
+            return 0;
+        }
+
+        return Math.max(
+                0,
+                plugin.getExpConfig().getLong(
+                        path + "exp", 0
+                )
+        );
+    }
+
+    /**
+     * Menghitung EXP yang masih bisa diterima
+     * sebelum mencapai level maksimal.
      */
     private long calculateAcceptableExp(
             Kingdom kingdom,
@@ -280,7 +322,11 @@ public final class ExpRewardManager {
             return 0;
         }
 
-        long currentExp = Math.max(0, kingdom.getExperience());
+        long currentExp = Math.max(
+                0,
+                kingdom.getExperience()
+        );
+
         long accepted = 0;
         long remaining = requested;
 
@@ -292,7 +338,10 @@ public final class ExpRewardManager {
                 break;
             }
 
-            long needed = Math.max(0, required - currentExp);
+            long needed = Math.max(
+                    0,
+                    required - currentExp
+            );
 
             if (needed <= 0) {
                 level++;
@@ -320,13 +369,12 @@ public final class ExpRewardManager {
             return "default";
         }
 
-        String key = actionKey.trim().toLowerCase(Locale.ROOT);
+        String key = actionKey.trim()
+                .toLowerCase(Locale.ROOT);
 
-        if (key.length() > 128) {
-            key = key.substring(0, 128);
-        }
-
-        return key;
+        return key.length() > 128
+                ? key.substring(0, 128)
+                : key;
     }
 
     private boolean isOnCooldown(
@@ -403,7 +451,8 @@ public final class ExpRewardManager {
 
         int resetMinutes = Math.max(1,
                 plugin.getExpConfig().getInt(
-                        "anti-farming.reset-after-minutes", 30
+                        "anti-farming.reset-after-minutes",
+                        30
                 )
         );
 
