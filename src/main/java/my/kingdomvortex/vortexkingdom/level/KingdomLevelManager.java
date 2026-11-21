@@ -4,6 +4,9 @@ package my.kingdomvortex.vortexkingdom.level;
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
 import my.kingdomvortex.vortexkingdom.kingdom.Kingdom;
 
+import org.bukkit.Sound;
+import org.bukkit.entity.Player;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -166,6 +169,7 @@ public final class KingdomLevelManager {
                                 0,
                                 result.getLong("experience")
                         );
+
                         oldTotalExp = Math.max(
                                 0,
                                 result.getLong("total_experience")
@@ -213,6 +217,7 @@ public final class KingdomLevelManager {
                         newLevel++;
                         newExp = 0;
                         levelUps.add(newLevel);
+
                     } else {
                         newExp = saturatedAdd(
                                 newExp,
@@ -400,18 +405,62 @@ public final class KingdomLevelManager {
         return first + second;
     }
 
-    private void handleLevelUps(String name, List<Integer> levels) {
+    private void handleLevelUps(String kingdomName, List<Integer> levels) {
+        if (!plugin.getExpConfig().getBoolean(
+                "rewards.level-up.enabled", true
+        )) {
+            return;
+        }
+
+        boolean broadcast = plugin.getExpConfig().getBoolean(
+                "rewards.level-up.broadcast", true
+        );
+
+        String soundName = plugin.getExpConfig().getString(
+                "rewards.level-up.sound",
+                "ENTITY_PLAYER_LEVELUP"
+        );
+
+        Sound sound = null;
+
+        if (soundName != null && !soundName.isBlank()) {
+            try {
+                sound = Sound.valueOf(
+                        soundName.trim().toUpperCase()
+                );
+            } catch (IllegalArgumentException exception) {
+                plugin.getLogger().warning(
+                        "Invalid level-up sound: " + soundName
+                );
+            }
+        }
+
+        Sound finalSound = sound;
         List<Integer> completedLevels = List.copyOf(levels);
 
         plugin.getServer().getScheduler().runTask(
                 plugin,
                 () -> {
                     for (int level : completedLevels) {
-                        plugin.getServer().broadcastMessage(
-                                "§8[§6Kingdom§8] §e" + name
-                                        + " §7has reached §6Level "
-                                        + level + "§7!"
-                        );
+                        if (broadcast) {
+                            plugin.getServer().broadcastMessage(
+                                    "§8[§6Kingdom§8] §e" + kingdomName
+                                            + " §7has reached §6Level "
+                                            + level + "§7!"
+                            );
+                        }
+
+                        if (finalSound != null) {
+                            for (Player online : plugin.getServer()
+                                    .getOnlinePlayers()) {
+                                online.playSound(
+                                        online.getLocation(),
+                                        finalSound,
+                                        1.0f,
+                                        1.0f
+                                );
+                            }
+                        }
                     }
                 }
         );
