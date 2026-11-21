@@ -22,12 +22,23 @@ public final class ExpRewardManager {
         this.plugin = plugin;
     }
 
+    /**
+     * Memberikan EXP kepada Kingdom milik player.
+     *
+     * @return jumlah EXP yang berhasil diberikan.
+     */
     public synchronized long award(
             UUID player,
             String source,
             String actionKey
     ) {
-        String normalizedSource = source.toLowerCase(Locale.ROOT);
+        if (player == null || source == null || source.isBlank()) {
+            return 0;
+        }
+
+        String normalizedSource = source
+                .trim()
+                .toLowerCase(Locale.ROOT);
 
         String path = "sources." + normalizedSource + ".";
 
@@ -59,13 +70,13 @@ public final class ExpRewardManager {
             return 0;
         }
 
-        long now = System.currentTimeMillis();
-
-        int cooldown = plugin.getExpConfig().getInt(
-                path + "cooldown", 0
+        int cooldown = Math.max(0,
+                plugin.getExpConfig().getInt(
+                        path + "cooldown", 0
+                )
         );
 
-        int dailyLimit = plugin.getExpConfig().getInt(
+        long dailyLimit = plugin.getExpConfig().getLong(
                 "settings.daily-exp-limit", 10000
         );
 
@@ -73,17 +84,9 @@ public final class ExpRewardManager {
             return 0;
         }
 
-        long reward = baseReward;
+        long now = System.currentTimeMillis();
 
         try {
-            Connection connection =
-                    plugin.getDatabaseManager().getConnection();
-
-            if (isOnCooldown(connection, player, normalizedSource,
-                    cooldown, now)) {
-                return 0;
-            }
-
             ZoneId zone = ZoneId.of(
                     plugin.getExpConfig().getString(
                             "settings.timezone", "Asia/Jakarta"
@@ -92,87 +95,238 @@ public final class ExpRewardManager {
 
             String today = LocalDate.now(zone).toString();
 
-            long dailyEarned = getDailyExp(
-                    connection, player, today
-            );
+            Connection connection =
+                    plugin.getDatabaseManager().getConnection();
 
-            long remainingDaily = Math.max(
-                    0, dailyLimit - dailyEarned
-            );
+            /*
+             * Semua proses reward menggunakan satu transaksi.
+             * Jika pemberian EXP gagal, penghitung aktivitas,
+             * daily EXP, dan cooldown ikut dibatalkan.
+             */
+            synchronized (connection) {
+                boolean previousAutoCommit =
+                        connection.getAutoCommit();
 
-            if (remainingDaily <= 0) {
-                return 0;
-            }
+                try {
+                    connection.setAutoCommit(false);
 
-            boolean antiFarming = plugin.getExpConfig()
-                    .getBoolean("anti-farming.enabled", true);
+                    if (isOnCooldown(
+                            connection,
+                            player,
+                            normalizedSource,
+                            cooldown,
+                            now
+                    )) {
+                        connection.rollback();
+                        return 0;
+                    }
 
-            if (antiFarming) {
-                int count = registerActivity(
-                        connection,
-                        player,
-                        normalizedSource,
-                        actionKey,
-                        now
-                );
-
-                int threshold = plugin.getExpConfig().getInt(
-                        "anti-farming.repeat-threshold", 5
-                );
-
-                int maxReduced = plugin.getExpConfig().getInt(
-                        "anti-farming.maximum-reduced-rewards", 10
-                );
-
-                double multiplier = plugin.getExpConfig().getDouble(
-                        "anti-farming.repeated-action-multiplier", 0.25
-                );
-
-                if (count > threshold + maxReduced) {
-                    return 0;
-                }
-
-                if (count > threshold) {
-                    reward = Math.max(
-                            1,
-                            (long) Math.floor(reward * multiplier)
+                    long dailyEarned = getDailyExp(
+                            connection,
+                            player,
+                            today
                     );
+
+                    long remainingDaily = Math.max(
+                            0,
+                            dailyLimit - dailyEarned
+                    );
+
+                    if (remainingDaily <= 0) {
+                        connection.rollback();
+                        return 0;
+                    }
+
+                    long reward = Math.min(
+                            baseReward,
+                            remainingDaily
+                    );
+
+                    boolean antiFarming = plugin.getExpConfig()
+                            .getBoolean(
+                                    "anti-farming.enabled", true
+                            );
+
+                    if (antiFarming) {
+                        String key = normalizeActionKey(actionKey);
+
+                        int count = registerActivity(
+                                connection,
+                                player,
+                                normalizedSource,
+                                key,
+                                now
+                        );
+
+                        int threshold = Math.max(0,
+                                plugin.getExpConfig().getInt(
+                                        "anti-farming.repeat-threshold", 5
+                                )
+                        );
+
+                        int maxReduced = Math.max(0,
+                                plugin.getExpConfig().getInt(
+                                        "anti-farming.maximum-reduced-rewards",
+                                        10
+                                )
+                        );
+
+                        double multiplier = plugin.getExpConfig()
+                                .getDouble(
+                                        "anti-farming.repeated-action-multiplier",
+                                        0.25
+                                );
+
+                        multiplier = Math.max(
+                                0,
+                                Math.min(1, multiplier)
+                        );
+
+                        if (count > threshold + maxReduced) {
+                            connection.rollback();
+                            return 0;
+                        }
+
+                        if (count > threshold) {
+                            reward = Math.max(
+                                    1,
+                                    (long) Math.floor(
+                                            reward * multiplier
+                                    )
+                            );
+                        }
+                    }
+
+                    /*
+                     * Jangan menghitung EXP yang tidak mungkin
+                     * diterima karena Kingdom mencapai level maksimum.
+                     */
+                    reward = calculateAcceptableExp(
+                            kingdom,
+                            Math.min(reward, remainingDaily)
+                    );
+
+                    if (reward <= 0) {
+                        connection.rollback();
+                        return 0;
+                    }
+
+                    /*
+                     * addExp menggunakan koneksi database yang sama.
+                     * Perubahannya masih berada di transaksi ini.
+                     */
+                    if (!plugin.getLevelManager().addExp(
+                            player,
+                            reward
+                    )) {
+                        connection.rollback();
+                        return 0;
+                    }
+
+                    saveDailyExp(
+                            connection,
+                            player,
+                            today,
+                            reward
+                    );
+
+                    updateCooldown(
+                            connection,
+                            player,
+                            normalizedSource,
+                            now
+                    );
+
+                    connection.commit();
+
+                    return reward;
+
+                } catch (Exception exception) {
+                    connection.rollback();
+                    throw exception;
+
+                } finally {
+                    connection.setAutoCommit(previousAutoCommit);
                 }
             }
-
-            reward = Math.min(reward, remainingDaily);
-
-            if (reward <= 0) {
-                return 0;
-            }
-
-            if (!plugin.getLevelManager().addExp(player, reward)) {
-                return 0;
-            }
-
-            saveDailyExp(
-                    connection,
-                    player,
-                    today,
-                    reward
-            );
-
-            updateCooldown(
-                    connection,
-                    player,
-                    normalizedSource,
-                    now
-            );
-
-            return reward;
 
         } catch (Exception exception) {
             plugin.getLogger().severe(
-                    "EXP reward error: " + exception.getMessage()
+                    "Failed to process EXP reward for "
+                            + player + ": "
+                            + exception.getMessage()
             );
 
             return 0;
         }
+    }
+
+    /**
+     * Menghitung EXP maksimum yang masih bisa diterima
+     * sebelum Kingdom mencapai level maksimal.
+     */
+    private long calculateAcceptableExp(
+            Kingdom kingdom,
+            long requested
+    ) {
+        if (requested <= 0) {
+            return 0;
+        }
+
+        int level = kingdom.getLevel();
+        int maxLevel = plugin.getLevelManager().getMaxLevel();
+
+        if (level >= maxLevel) {
+            return 0;
+        }
+
+        long currentExp = Math.max(0, kingdom.getExperience());
+        long accepted = 0;
+        long remaining = requested;
+
+        while (level < maxLevel && remaining > 0) {
+            long required = plugin.getLevelManager()
+                    .getRequiredExp(level);
+
+            if (required <= 0) {
+                break;
+            }
+
+            long needed = Math.max(0, required - currentExp);
+
+            if (needed <= 0) {
+                level++;
+                currentExp = 0;
+                continue;
+            }
+
+            long gain = Math.min(remaining, needed);
+
+            accepted += gain;
+            remaining -= gain;
+            currentExp += gain;
+
+            if (currentExp >= required) {
+                level++;
+                currentExp = 0;
+            }
+        }
+
+        return accepted;
+    }
+
+    private String normalizeActionKey(String actionKey) {
+        if (actionKey == null || actionKey.isBlank()) {
+            return "default";
+        }
+
+        String key = actionKey.trim().toLowerCase(Locale.ROOT);
+
+        if (key.length() > 128) {
+            key = key.substring(0, 128);
+        }
+
+        return key;
     }
 
     private boolean isOnCooldown(
@@ -190,7 +344,8 @@ public final class ExpRewardManager {
         String sql = """
                 SELECT last_reward_at
                 FROM kingdom_exp_source_cooldowns
-                WHERE player_uuid = ? AND source = ?
+                WHERE player_uuid = ?
+                  AND source = ?
                 """;
 
         try (PreparedStatement statement =
@@ -220,7 +375,8 @@ public final class ExpRewardManager {
         String sql = """
                 SELECT experience
                 FROM kingdom_daily_exp
-                WHERE player_uuid = ? AND date = ?
+                WHERE player_uuid = ?
+                  AND date = ?
                 """;
 
         try (PreparedStatement statement =
@@ -245,20 +401,24 @@ public final class ExpRewardManager {
             long now
     ) throws SQLException {
 
-        String key = actionKey == null || actionKey.isBlank()
-                ? "default"
-                : actionKey;
-
-        int resetMinutes = plugin.getExpConfig().getInt(
-                "anti-farming.reset-after-minutes", 30
+        int resetMinutes = Math.max(1,
+                plugin.getExpConfig().getInt(
+                        "anti-farming.reset-after-minutes", 30
+                )
         );
 
-        long resetMillis = Math.max(1, resetMinutes) * 60_000L;
+        long resetMillis = resetMinutes * 60_000L;
 
         String sql = """
                 INSERT INTO kingdom_exp_activity
-                (player_uuid, source, action_key, action_count,
-                 window_started, last_reward_at)
+                (
+                    player_uuid,
+                    source,
+                    action_key,
+                    action_count,
+                    window_started,
+                    last_reward_at
+                )
                 VALUES (?, ?, ?, 1, ?, ?)
                 ON CONFLICT(player_uuid, source, action_key)
                 DO UPDATE SET
@@ -282,7 +442,7 @@ public final class ExpRewardManager {
 
             statement.setString(1, player.toString());
             statement.setString(2, source);
-            statement.setString(3, key);
+            statement.setString(3, actionKey);
             statement.setLong(4, now);
             statement.setLong(5, now);
             statement.setLong(6, resetMillis);
@@ -291,20 +451,20 @@ public final class ExpRewardManager {
             statement.executeUpdate();
         }
 
+        String selectSql = """
+                SELECT action_count
+                FROM kingdom_exp_activity
+                WHERE player_uuid = ?
+                  AND source = ?
+                  AND action_key = ?
+                """;
+
         try (PreparedStatement statement =
-                     connection.prepareStatement(
-                             """
-                             SELECT action_count
-                             FROM kingdom_exp_activity
-                             WHERE player_uuid = ?
-                             AND source = ?
-                             AND action_key = ?
-                             """
-                     )) {
+                     connection.prepareStatement(selectSql)) {
 
             statement.setString(1, player.toString());
             statement.setString(2, source);
-            statement.setString(3, key);
+            statement.setString(3, actionKey);
 
             try (ResultSet result = statement.executeQuery()) {
                 return result.next()
@@ -336,6 +496,7 @@ public final class ExpRewardManager {
             statement.setString(1, player.toString());
             statement.setString(2, date);
             statement.setLong(3, amount);
+
             statement.executeUpdate();
         }
     }
@@ -352,7 +513,8 @@ public final class ExpRewardManager {
                 (player_uuid, source, last_reward_at)
                 VALUES (?, ?, ?)
                 ON CONFLICT(player_uuid, source)
-                DO UPDATE SET last_reward_at = excluded.last_reward_at
+                DO UPDATE SET
+                    last_reward_at = excluded.last_reward_at
                 """;
 
         try (PreparedStatement statement =
@@ -361,6 +523,7 @@ public final class ExpRewardManager {
             statement.setString(1, player.toString());
             statement.setString(2, source);
             statement.setLong(3, now);
+
             statement.executeUpdate();
         }
     }
