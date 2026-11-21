@@ -1,6 +1,6 @@
-
 package my.kingdomvortex.vortexkingdom.kingdom;
 
+import java.util.Locale;
 import java.util.UUID;
 
 public final class KingdomMember {
@@ -12,9 +12,13 @@ public final class KingdomMember {
         MEMBER;
 
         public static Role fromString(String value) {
+            if (value == null) {
+                return MEMBER;
+            }
+
             try {
-                return Role.valueOf(value.toUpperCase());
-            } catch (Exception exception) {
+                return Role.valueOf(value.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException exception) {
                 return MEMBER;
             }
         }
@@ -36,7 +40,7 @@ public final class KingdomMember {
         this.kingdomId = kingdomId;
         this.playerUuid = playerUuid;
         this.playerName = playerName;
-        this.role = role;
+        this.role = role == null ? Role.MEMBER : role;
         this.joinedAt = joinedAt;
     }
 
@@ -51,7 +55,7 @@ public final class KingdomMember {
     public UUID getPlayerUniqueId() {
         try {
             return UUID.fromString(playerUuid);
-        } catch (IllegalArgumentException exception) {
+        } catch (RuntimeException exception) {
             return null;
         }
     }
@@ -71,4 +75,4 @@ public final class KingdomMember {
     public boolean isOwner() {
         return role == Role.OWNER;
     }
-}
+                    }
