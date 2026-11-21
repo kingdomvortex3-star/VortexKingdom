@@ -115,18 +115,15 @@ public final class KingdomLevelManager {
     }
 
     /**
-     * Menambahkan EXP dan langsung mengumumkan level-up
-     * setelah update database berhasil.
+     * Penambahan EXP biasa berdasarkan UUID pemain.
      */
     public boolean addExp(UUID player, long amount) {
         return addExp(player, amount, true);
     }
 
     /**
-     * Menambahkan EXP.
-     *
-     * announceLevelUps = false digunakan oleh ExpRewardManager
-     * agar notifikasi dapat ditunda sampai transaksi utama commit.
+     * Penambahan EXP berdasarkan UUID pemain.
+     * Digunakan untuk proses di luar transaksi reward.
      */
     public boolean addExp(
             UUID player,
@@ -144,6 +141,30 @@ public final class KingdomLevelManager {
         }
 
         Kingdom kingdom = optional.get();
+
+        return addExp(
+                kingdom.getId(),
+                kingdom.getName(),
+                amount,
+                announceLevelUps
+        );
+    }
+
+    /**
+     * Penambahan EXP langsung berdasarkan ID Kingdom.
+     *
+     * Method ini tidak memanggil KingdomManager sehingga aman
+     * dipakai ketika ExpRewardManager sedang memegang lock koneksi.
+     */
+    public boolean addExp(
+            int kingdomId,
+            String kingdomName,
+            long amount,
+            boolean announceLevelUps
+    ) {
+        if (kingdomId <= 0 || amount <= 0) {
+            return false;
+        }
 
         String selectSql = """
                 SELECT level, experience, total_experience
@@ -175,7 +196,7 @@ public final class KingdomLevelManager {
                 try (PreparedStatement statement =
                              connection.prepareStatement(selectSql)) {
 
-                    statement.setInt(1, kingdom.getId());
+                    statement.setInt(1, kingdomId);
 
                     try (ResultSet result = statement.executeQuery()) {
                         if (!result.next()) {
@@ -187,7 +208,6 @@ public final class KingdomLevelManager {
                                 0,
                                 result.getLong("experience")
                         );
-
                         oldTotalExp = Math.max(
                                 0,
                                 result.getLong("total_experience")
@@ -266,7 +286,7 @@ public final class KingdomLevelManager {
                     statement.setLong(2, newExp);
                     statement.setLong(3, newTotalExp);
                     statement.setLong(4, System.currentTimeMillis());
-                    statement.setInt(5, kingdom.getId());
+                    statement.setInt(5, kingdomId);
                     statement.setInt(6, oldLevel);
                     statement.setLong(7, oldExp);
                     statement.setLong(8, oldTotalExp);
@@ -277,7 +297,7 @@ public final class KingdomLevelManager {
                 }
 
                 if (announceLevelUps && !levelUps.isEmpty()) {
-                    handleLevelUps(kingdom.getName(), levelUps);
+                    handleLevelUps(kingdomName, levelUps);
                 }
 
                 return true;
@@ -288,12 +308,13 @@ public final class KingdomLevelManager {
                     "Failed to add Kingdom EXP: "
                             + exception.getMessage()
             );
+            exception.printStackTrace();
             return false;
         }
     }
 
     /**
-     * Dipanggil setelah transaksi EXP berhasil commit.
+     * Mengirim pengumuman setelah transaksi reward berhasil commit.
      */
     public void announceLevelUps(
             String kingdomName,
@@ -384,6 +405,7 @@ public final class KingdomLevelManager {
                     "Failed to set Kingdom EXP: "
                             + exception.getMessage()
             );
+            exception.printStackTrace();
             return false;
         }
     }
@@ -430,6 +452,7 @@ public final class KingdomLevelManager {
                     "Failed to set Kingdom level: "
                             + exception.getMessage()
             );
+            exception.printStackTrace();
             return false;
         }
     }
@@ -451,6 +474,10 @@ public final class KingdomLevelManager {
             String kingdomName,
             List<Integer> levels
     ) {
+        if (levels == null || levels.isEmpty()) {
+            return;
+        }
+
         if (!plugin.getExpConfig().getBoolean(
                 "rewards.level-up.enabled", true
         )) {
