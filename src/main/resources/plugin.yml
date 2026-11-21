@@ -1,7 +1,8 @@
+
 name: VortexKingdom
 version: '${version}'
 main: my.kingdomvortex.vortexkingdom.VortexKingdom
-api-version: '1.21'
+api-version: '26.3'
 author: KingdomVortex
 description: Advanced Kingdom System with GUI, EXP, Levels and Leaderboards.
 
@@ -15,11 +16,14 @@ commands:
       - k
       - king
     usage: /kingdom
+    permission: vortexkingdom.use
 
 permissions:
   vortexkingdom.admin:
     description: Access to Kingdom administration commands
     default: op
+    children:
+      vortexkingdom.use: true
 
   vortexkingdom.use:
     description: Use the Kingdom system
