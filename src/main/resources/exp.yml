@@ -1,10 +1,10 @@
+
 settings:
   maximum-level: 100
   base-required-exp: 1000
   growth-rate: 1.18
   daily-exp-limit: 10000
-  cooldown-seconds: 3
-  anti-farming: true
+  timezone: Asia/Jakarta
 
 rewards:
   level-up:
@@ -40,5 +40,7 @@ sources:
 
 anti-farming:
   enabled: true
+  repeat-threshold: 5
   repeated-action-multiplier: 0.25
   maximum-reduced-rewards: 10
+  reset-after-minutes: 30
