@@ -1,4 +1,3 @@
-
 package my.kingdomvortex.vortexkingdom.kingdom;
 
 public final class Kingdom {
