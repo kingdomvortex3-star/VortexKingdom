@@ -26,10 +26,6 @@ public final class KingdomExpListener implements Listener {
 
     private final VortexKingdom plugin;
 
-    // ==================================================
-    // FARMING MATERIALS
-    // ==================================================
-
     private static final Set<Material> FARM_CROPS = EnumSet.of(
             Material.WHEAT,
             Material.CARROTS,
@@ -43,10 +39,6 @@ public final class KingdomExpListener implements Listener {
             Material.TORCHFLOWER_CROP,
             Material.PITCHER_CROP
     );
-
-    // ==================================================
-    // BOSS REWARDS
-    // ==================================================
 
     private static final Map<EntityType, String> BOSS_REWARDS = Map.of(
             EntityType.ENDER_DRAGON, "ender-dragon",
@@ -68,17 +60,11 @@ public final class KingdomExpListener implements Listener {
             ignoreCancelled = true
     )
     public void onMining(BlockBreakEvent event) {
-
         Player player = event.getPlayer();
         Block block = event.getBlock();
         Material material = block.getType();
 
-        if (material.isAir()) {
-            return;
-        }
-
-        // Tanaman tidak mendapatkan mining EXP.
-        if (FARM_CROPS.contains(material)) {
+        if (material.isAir() || FARM_CROPS.contains(material)) {
             return;
         }
 
@@ -98,7 +84,6 @@ public final class KingdomExpListener implements Listener {
             ignoreCancelled = true
     )
     public void onFarming(BlockBreakEvent event) {
-
         Player player = event.getPlayer();
         Block block = event.getBlock();
         Material material = block.getType();
@@ -107,15 +92,12 @@ public final class KingdomExpListener implements Listener {
             return;
         }
 
-        // Melon dan Pumpkin tidak menggunakan Ageable.
         if (material == Material.MELON
                 || material == Material.PUMPKIN) {
-
             awardFarming(player.getUniqueId(), material);
             return;
         }
 
-        // Tanaman lainnya harus sudah matang.
         if (!(block.getBlockData() instanceof Ageable ageable)) {
             return;
         }
@@ -128,7 +110,6 @@ public final class KingdomExpListener implements Listener {
     }
 
     private void awardFarming(UUID player, Material material) {
-
         plugin.getExpRewardManager().award(
                 player,
                 "farming",
@@ -145,7 +126,6 @@ public final class KingdomExpListener implements Listener {
             ignoreCancelled = true
     )
     public void onMonsterKill(EntityDeathEvent event) {
-
         Player killer = event.getEntity().getKiller();
 
         if (killer == null) {
@@ -153,16 +133,11 @@ public final class KingdomExpListener implements Listener {
         }
 
         EntityType type = event.getEntityType();
-
-        // Periksa apakah target merupakan boss.
         String bossKey = BOSS_REWARDS.get(type);
 
         if (bossKey != null) {
-
-            // Boss kill masuk statistik Kingdom.
             recordKingdomKill(killer.getUniqueId());
 
-            // Boss menggunakan reward khusus.
             plugin.getExpRewardManager().award(
                     killer.getUniqueId(),
                     "boss-kill",
@@ -172,15 +147,12 @@ public final class KingdomExpListener implements Listener {
             return;
         }
 
-        // Monster biasa.
         if (!(event.getEntity() instanceof Monster)) {
             return;
         }
 
-        // Catat kill monster.
         recordKingdomKill(killer.getUniqueId());
 
-        // Berikan EXP monster.
         plugin.getExpRewardManager().award(
                 killer.getUniqueId(),
                 "monster-kill",
@@ -193,7 +165,6 @@ public final class KingdomExpListener implements Listener {
     // ==================================================
 
     private void recordKingdomKill(UUID player) {
-
         if (player == null) {
             return;
         }
@@ -211,12 +182,10 @@ public final class KingdomExpListener implements Listener {
                 """;
 
         try {
-
             Connection connection =
                     plugin.getDatabaseManager().getConnection();
 
             synchronized (connection) {
-
                 try (PreparedStatement statement =
                              connection.prepareStatement(sql)) {
 
@@ -235,7 +204,6 @@ public final class KingdomExpListener implements Listener {
             }
 
         } catch (Exception exception) {
-
             plugin.getLogger().log(
                     java.util.logging.Level.SEVERE,
                     "Failed to record Kingdom kill for " + player,
