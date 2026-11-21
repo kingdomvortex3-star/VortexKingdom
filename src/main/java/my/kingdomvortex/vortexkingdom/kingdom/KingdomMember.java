@@ -75,4 +75,4 @@ public final class KingdomMember {
     public boolean isOwner() {
         return role == Role.OWNER;
     }
-                    }
+}
