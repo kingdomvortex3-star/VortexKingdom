@@ -2,6 +2,7 @@
 package my.kingdomvortex.vortexkingdom.command;
 
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
+
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -11,11 +12,11 @@ import org.bukkit.entity.Player;
 
 import java.util.List;
 
-public class KingdomCommand implements CommandExecutor, TabCompleter {
+public final class KingdomCommand implements CommandExecutor, TabCompleter {
 
     private final String prefix =
             ChatColor.DARK_GRAY + "[" +
-            ChatColor.AQUA + "Kingdom" +
+            ChatColor.GOLD + "Kingdom" +
             ChatColor.DARK_GRAY + "] " +
             ChatColor.GRAY;
 
@@ -34,18 +35,26 @@ public class KingdomCommand implements CommandExecutor, TabCompleter {
 
         if (!player.hasPermission("vortexkingdom.use")) {
             player.sendMessage(prefix + ChatColor.RED +
-                    "You don't have permission to use this command.");
+                    "You don't have permission.");
             return true;
         }
 
         if (args.length == 0) {
-            openKingdomMenu(player);
+            VortexKingdom.getInstance()
+                    .getGuiManager()
+                    .openMainMenu(player);
             return true;
         }
 
         switch (args[0].toLowerCase()) {
 
-            case "help" -> sendHelp(player);
+            case "help" -> {
+                player.sendMessage("");
+                player.sendMessage("§6§lKINGDOM COMMANDS");
+                player.sendMessage("§e/kingdom §7- Open Kingdom GUI");
+                player.sendMessage("§e/kingdom help §7- Show commands");
+                player.sendMessage("");
+            }
 
             case "reload" -> {
                 if (!player.hasPermission("vortexkingdom.admin")) {
@@ -55,43 +64,18 @@ public class KingdomCommand implements CommandExecutor, TabCompleter {
                 }
 
                 VortexKingdom.getInstance().reloadConfig();
+                VortexKingdom.getInstance().reloadExpConfig();
 
                 player.sendMessage(prefix + ChatColor.GREEN +
                         "Configuration reloaded!");
             }
 
-            default -> sendHelp(player);
+            default -> player.sendMessage(
+                    prefix + "Use /kingdom to open the menu."
+            );
         }
 
         return true;
-    }
-
-    private void openKingdomMenu(Player player) {
-        player.sendMessage("");
-        player.sendMessage(ChatColor.GOLD.toString() +
-                ChatColor.BOLD + "       KINGDOM SYSTEM");
-        player.sendMessage("");
-        player.sendMessage(ChatColor.GRAY +
-                "  Kingdom GUI is being prepared.");
-        player.sendMessage(ChatColor.GRAY +
-                "  All kingdom features will be accessible");
-        player.sendMessage(ChatColor.GRAY +
-                "  through this menu.");
-        player.sendMessage("");
-    }
-
-    private void sendHelp(Player player) {
-        player.sendMessage("");
-        player.sendMessage(ChatColor.GOLD.toString() +
-                ChatColor.BOLD + "       KINGDOM COMMANDS");
-        player.sendMessage("");
-        player.sendMessage(ChatColor.YELLOW +
-                "/kingdom " + ChatColor.GRAY + "- Open Kingdom GUI");
-        player.sendMessage(ChatColor.YELLOW +
-                "/kingdom help " + ChatColor.GRAY + "- Show commands");
-        player.sendMessage(ChatColor.YELLOW +
-                "/kingdom reload " + ChatColor.GRAY + "- Reload config");
-        player.sendMessage("");
     }
 
     @Override
