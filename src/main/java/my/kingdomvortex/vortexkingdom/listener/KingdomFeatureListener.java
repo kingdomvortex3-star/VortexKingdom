@@ -20,7 +20,6 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.Inventory;
 
@@ -43,10 +42,6 @@ public final class KingdomFeatureListener implements Listener {
         this.features = plugin.getFeatureManager();
         this.gui = gui;
     }
-
-    // ==================================================
-    // INVENTORY CLICK
-    // ==================================================
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onInventoryClick(InventoryClickEvent event) {
@@ -72,15 +67,14 @@ public final class KingdomFeatureListener implements Listener {
         switch (holder.getMenu()) {
             case HOME -> handleHome(player, slot);
             case SETTINGS -> handleSettings(player, slot);
-            case HOME_CONFIRMATION -> handleHomeConfirmation(player, slot);
-            case DESCRIPTION_INPUT -> handleDescriptionInput(player, inventory, slot);
-            case CREATE_KINGDOM_INPUT -> handleCreateKingdom(player, inventory, slot);
+            case HOME_CONFIRMATION ->
+                    handleHomeConfirmation(player, slot);
+            case DESCRIPTION_INPUT ->
+                    handleDescriptionInput(player, inventory, slot);
+            case CREATE_KINGDOM_INPUT ->
+                    handleCreateKingdom(player, inventory, slot);
         }
     }
-
-    // ==================================================
-    // HOME
-    // ==================================================
 
     private void handleHome(Player player, int slot) {
         switch (slot) {
@@ -147,10 +141,6 @@ public final class KingdomFeatureListener implements Listener {
         }
     }
 
-    // ==================================================
-    // SETTINGS
-    // ==================================================
-
     private void handleSettings(Player player, int slot) {
         switch (slot) {
             case 20 -> {
@@ -167,7 +157,6 @@ public final class KingdomFeatureListener implements Listener {
                 if (optional.isEmpty()) return;
 
                 boolean enabled = !optional.get().isPvpEnabled();
-
                 boolean updated = features.setPvp(player, enabled);
 
                 player.sendMessage(
@@ -222,10 +211,6 @@ public final class KingdomFeatureListener implements Listener {
         }
     }
 
-    // ==================================================
-    // HOME CONFIRMATION
-    // ==================================================
-
     private void handleHomeConfirmation(Player player, int slot) {
         if (slot == 11) {
             gui.openHome(player);
@@ -245,10 +230,6 @@ public final class KingdomFeatureListener implements Listener {
         }
     }
 
-    // ==================================================
-    // DESCRIPTION INPUT
-    // ==================================================
-
     private void handleDescriptionInput(
             Player player,
             Inventory inventory,
@@ -261,7 +242,9 @@ public final class KingdomFeatureListener implements Listener {
         String description = anvil.getRenameText();
 
         if (description == null || description.isBlank()) {
-            player.sendMessage(PREFIX + "§cDeskripsi tidak boleh kosong.");
+            player.sendMessage(
+                    PREFIX + "§cDeskripsi tidak boleh kosong."
+            );
             return;
         }
 
@@ -294,10 +277,6 @@ public final class KingdomFeatureListener implements Listener {
         gui.openSettings(player);
     }
 
-    // ==================================================
-    // CREATE KINGDOM INPUT
-    // ==================================================
-
     private void handleCreateKingdom(
             Player player,
             Inventory inventory,
@@ -310,7 +289,9 @@ public final class KingdomFeatureListener implements Listener {
         String name = anvil.getRenameText();
 
         if (name == null || name.isBlank()) {
-            player.sendMessage(PREFIX + "§cNama Kingdom tidak boleh kosong.");
+            player.sendMessage(
+                    PREFIX + "§cNama Kingdom tidak boleh kosong."
+            );
             return;
         }
 
@@ -334,10 +315,6 @@ public final class KingdomFeatureListener implements Listener {
             gui.openMainMenu(player);
         }
     }
-
-    // ==================================================
-    // FRIENDLY FIRE
-    // ==================================================
 
     @EventHandler(
             priority = EventPriority.HIGH,
@@ -380,15 +357,12 @@ public final class KingdomFeatureListener implements Listener {
 
         if (!features.isPvpEnabled(victimKingdom.get().getId())) {
             event.setCancelled(true);
+
             attacker.sendMessage(
                     PREFIX + "§cPvP Kingdom sedang dinonaktifkan."
             );
         }
     }
-
-    // ==================================================
-    // KINGDOM CHAT
-    // ==================================================
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onKingdomChat(AsyncPlayerChatEvent event) {
@@ -428,10 +402,6 @@ public final class KingdomFeatureListener implements Listener {
             }
         });
     }
-
-    // ==================================================
-    // INVENTORY DRAG
-    // ==================================================
 
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
