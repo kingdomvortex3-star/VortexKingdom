@@ -37,6 +37,25 @@ sources:
     enabled: true
     exp: 100
     cooldown: 0
+    
+boss-rewards:
+  enabled: true
+
+  ender-dragon:
+    enabled: true
+    exp: 500
+
+  wither:
+    enabled: true
+    exp: 300
+
+  warden:
+    enabled: true
+    exp: 250
+
+  elder-guardian:
+    enabled: true
+    exp: 150
 
 anti-farming:
   enabled: true
