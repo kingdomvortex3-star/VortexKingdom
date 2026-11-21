@@ -114,7 +114,25 @@ public final class KingdomLevelManager {
         );
     }
 
+    /**
+     * Menambahkan EXP dan langsung mengumumkan level-up
+     * setelah update database berhasil.
+     */
     public boolean addExp(UUID player, long amount) {
+        return addExp(player, amount, true);
+    }
+
+    /**
+     * Menambahkan EXP.
+     *
+     * announceLevelUps = false digunakan oleh ExpRewardManager
+     * agar notifikasi dapat ditunda sampai transaksi utama commit.
+     */
+    public boolean addExp(
+            UUID player,
+            long amount,
+            boolean announceLevelUps
+    ) {
         if (player == null || amount <= 0) {
             return false;
         }
@@ -177,12 +195,6 @@ public final class KingdomLevelManager {
                     }
                 }
 
-                int maxLevel = getMaxLevel();
-
-                if (oldLevel >= maxLevel) {
-                    return false;
-                }
-
                 int newLevel = oldLevel;
                 long newExp = oldExp;
                 long remainingAmount = amount;
@@ -190,14 +202,19 @@ public final class KingdomLevelManager {
 
                 List<Integer> levelUps = new ArrayList<>();
 
-                while (newLevel < maxLevel && remainingAmount > 0) {
+                while (newLevel < getMaxLevel()
+                        && remainingAmount > 0) {
+
                     long required = getRequiredExp(newLevel);
 
                     if (required <= 0) {
                         break;
                     }
 
-                    long needed = Math.max(0, required - newExp);
+                    long needed = Math.max(
+                            0,
+                            required - newExp
+                    );
 
                     if (needed <= 0) {
                         newLevel++;
@@ -259,7 +276,7 @@ public final class KingdomLevelManager {
                     }
                 }
 
-                if (!levelUps.isEmpty()) {
+                if (announceLevelUps && !levelUps.isEmpty()) {
                     handleLevelUps(kingdom.getName(), levelUps);
                 }
 
@@ -273,6 +290,31 @@ public final class KingdomLevelManager {
             );
             return false;
         }
+    }
+
+    /**
+     * Dipanggil setelah transaksi EXP berhasil commit.
+     */
+    public void announceLevelUps(
+            String kingdomName,
+            int oldLevel,
+            int newLevel
+    ) {
+        if (kingdomName == null
+                || kingdomName.isBlank()
+                || newLevel <= oldLevel) {
+            return;
+        }
+
+        List<Integer> levels = new ArrayList<>();
+
+        for (int level = oldLevel + 1;
+             level <= newLevel;
+             level++) {
+            levels.add(level);
+        }
+
+        handleLevelUps(kingdomName, levels);
     }
 
     public boolean setExp(UUID player, long amount) {
@@ -405,7 +447,10 @@ public final class KingdomLevelManager {
         return first + second;
     }
 
-    private void handleLevelUps(String kingdomName, List<Integer> levels) {
+    private void handleLevelUps(
+            String kingdomName,
+            List<Integer> levels
+    ) {
         if (!plugin.getExpConfig().getBoolean(
                 "rewards.level-up.enabled", true
         )) {
@@ -444,7 +489,8 @@ public final class KingdomLevelManager {
                     for (int level : completedLevels) {
                         if (broadcast) {
                             plugin.getServer().broadcastMessage(
-                                    "§8[§6Kingdom§8] §e" + kingdomName
+                                    "§8[§6Kingdom§8] §e"
+                                            + kingdomName
                                             + " §7has reached §6Level "
                                             + level + "§7!"
                             );
