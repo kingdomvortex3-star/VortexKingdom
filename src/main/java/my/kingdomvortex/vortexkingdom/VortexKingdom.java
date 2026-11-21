@@ -57,7 +57,6 @@ public final class VortexKingdom extends JavaPlugin {
             expRewardManager = new ExpRewardManager(this);
             leaderboardManager = new KingdomLeaderboardManager(this);
 
-            // New kingdom features
             featureManager = new KingdomFeatureManager(this);
 
             guiManager = new KingdomGUIManager(this);
@@ -83,10 +82,7 @@ public final class VortexKingdom extends JavaPlugin {
             registerPlaceholder();
 
         } catch (Exception exception) {
-            getLogger().severe(
-                    "Failed to initialize VortexKingdom!"
-            );
-
+            getLogger().severe("Failed to initialize VortexKingdom!");
             exception.printStackTrace();
 
             if (databaseManager != null) {
@@ -110,9 +106,7 @@ public final class VortexKingdom extends JavaPlugin {
         getLogger().info("Listeners: Registered");
         getLogger().info(
                 "PlaceholderAPI: "
-                        + (placeholder != null
-                        ? "Registered"
-                        : "Not Installed")
+                        + (placeholder != null ? "Registered" : "Not Installed")
         );
         getLogger().info("==================================");
     }
@@ -146,20 +140,15 @@ public final class VortexKingdom extends JavaPlugin {
         }
 
         KingdomCommand executor = new KingdomCommand(this);
-
         command.setExecutor(executor);
         command.setTabCompleter(executor);
     }
 
     private void registerPlaceholder() {
-        if (!getServer().getPluginManager()
-                .isPluginEnabled("PlaceholderAPI")) {
-
+        if (!getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             getLogger().info(
-                    "PlaceholderAPI not found. "
-                            + "Placeholder support disabled."
+                    "PlaceholderAPI not found. Placeholder support disabled."
             );
-
             return;
         }
 
@@ -186,7 +175,6 @@ public final class VortexKingdom extends JavaPlugin {
         }
 
         getLogger().info("VortexKingdom disabled.");
-
         instance = null;
     }
 
