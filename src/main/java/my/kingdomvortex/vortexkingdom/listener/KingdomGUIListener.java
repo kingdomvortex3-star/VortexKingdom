@@ -79,21 +79,14 @@ public final class KingdomGUIListener implements Listener {
 
         switch (holder.getMenu()) {
             case MAIN -> handleMain(player, slot);
-
             case PROFILE -> handleProfile(player, slot);
-
             case LEVEL -> handleLevel(player, slot);
-
             case MEMBERS -> handleMembers(player, holder, slot);
-
             case INVITE_PLAYERS -> handleInvitePlayers(player, slot);
-
             case MEMBER_ACTIONS ->
                     handleMemberActions(player, holder, slot);
-
             case INVITATIONS ->
                     handleInvitations(player, slot, event.isRightClick());
-
             case CONFIRMATION ->
                     handleConfirmation(player, holder, slot);
         }
@@ -117,25 +110,32 @@ public final class KingdomGUIListener implements Listener {
             case 14 -> guiManager.openLevelMenu(player);
 
             case 16 -> player.sendMessage(
-                    "§cKingdom Home belum tersedia. Fitur ini akan disambungkan berikutnya."
+                    "§cKingdom Home belum tersedia."
             );
 
             case 22 -> {
                 if (hasKingdom(player)) {
-                    player.sendMessage("§cKamu sudah memiliki Kingdom.");
+                    player.sendMessage(
+                            "§cKamu sudah memiliki Kingdom."
+                    );
                     return;
                 }
 
                 creatingKingdom.put(player.getUniqueId(), true);
-
                 player.closeInventory();
 
                 player.sendMessage("");
                 player.sendMessage("§6§lKINGDOM CREATION");
-                player.sendMessage("§7Masukkan nama Kingdom di chat.");
+                player.sendMessage(
+                        "§7Masukkan nama Kingdom di chat."
+                );
                 player.sendMessage("§7Format: §f3-16 karakter");
-                player.sendMessage("§7Gunakan huruf, angka, dan underscore.");
-                player.sendMessage("§cKetik §fcancel §cuntuk membatalkan.");
+                player.sendMessage(
+                        "§7Gunakan huruf, angka, dan underscore."
+                );
+                player.sendMessage(
+                        "§cKetik §fcancel §cuntuk membatalkan."
+                );
                 player.sendMessage("");
             }
 
@@ -166,10 +166,14 @@ public final class KingdomGUIListener implements Listener {
 
             case 33 -> {
                 var kingdomOptional =
-                        kingdomManager.getKingdomByPlayer(player.getUniqueId());
+                        kingdomManager.getKingdomByPlayer(
+                                player.getUniqueId()
+                        );
 
                 if (kingdomOptional.isEmpty()) {
-                    player.sendMessage("§cKamu tidak memiliki Kingdom.");
+                    player.sendMessage(
+                            "§cKamu tidak memiliki Kingdom."
+                    );
                     return;
                 }
 
@@ -187,13 +191,19 @@ public final class KingdomGUIListener implements Listener {
 
                 } else {
                     boolean success =
-                            kingdomManager.leaveKingdom(player.getUniqueId());
+                            kingdomManager.leaveKingdom(
+                                    player.getUniqueId()
+                            );
 
                     if (success) {
                         player.closeInventory();
-                        player.sendMessage("§aKamu berhasil keluar dari Kingdom.");
+                        player.sendMessage(
+                                "§aKamu berhasil keluar dari Kingdom."
+                        );
                     } else {
-                        player.sendMessage("§cGagal keluar dari Kingdom.");
+                        player.sendMessage(
+                                "§cGagal keluar dari Kingdom."
+                        );
                     }
                 }
             }
@@ -228,7 +238,9 @@ public final class KingdomGUIListener implements Listener {
         }
 
         if (slot == 48) {
-            guiManager.openMembers(player, holder.getPage() - 1);
+            guiManager.openMembers(
+                    player, holder.getPage() - 1
+            );
             return;
         }
 
@@ -238,7 +250,9 @@ public final class KingdomGUIListener implements Listener {
         }
 
         if (slot == 50) {
-            guiManager.openMembers(player, holder.getPage() + 1);
+            guiManager.openMembers(
+                    player, holder.getPage() + 1
+            );
             return;
         }
 
@@ -254,15 +268,21 @@ public final class KingdomGUIListener implements Listener {
         }
 
         var kingdomOptional =
-                kingdomManager.getKingdomByPlayer(player.getUniqueId());
+                kingdomManager.getKingdomByPlayer(
+                        player.getUniqueId()
+                );
 
         if (kingdomOptional.isEmpty()) {
-            player.sendMessage("§cKamu tidak memiliki Kingdom.");
+            player.sendMessage(
+                    "§cKamu tidak memiliki Kingdom."
+            );
             return;
         }
 
         List<KingdomMember> members =
-                kingdomManager.getMembers(kingdomOptional.get().getId());
+                kingdomManager.getMembers(
+                        kingdomOptional.get().getId()
+                );
 
         int actualIndex =
                 holder.getPage() * MEMBER_SLOTS.length + memberIndex;
@@ -273,19 +293,33 @@ public final class KingdomGUIListener implements Listener {
 
         KingdomMember target = members.get(actualIndex);
 
-        if (target.getPlayerUuid().equals(player.getUniqueId())) {
-            player.sendMessage("§cKamu tidak bisa mengelola dirimu sendiri.");
+        UUID targetUuid = target.getPlayerUniqueId();
+
+        if (targetUuid == null) {
+            player.sendMessage(
+                    "§cUUID anggota tidak valid."
+            );
             return;
         }
 
-        guiManager.openMemberActions(player, target.getPlayerUuid());
+        if (targetUuid.equals(player.getUniqueId())) {
+            player.sendMessage(
+                    "§cKamu tidak bisa mengelola dirimu sendiri."
+            );
+            return;
+        }
+
+        guiManager.openMemberActions(player, targetUuid);
     }
 
     // ==========================================
     // INVITE PLAYERS MENU
     // ==========================================
 
-    private void handleInvitePlayers(Player player, int slot) {
+    private void handleInvitePlayers(
+            Player player,
+            int slot
+    ) {
 
         if (slot == 49) {
             guiManager.openMembers(player, 0);
@@ -299,13 +333,15 @@ public final class KingdomGUIListener implements Listener {
         ItemStack item = player.getOpenInventory()
                 .getTopInventory().getItem(slot);
 
-        if (item == null || item.getType() != Material.PLAYER_HEAD) {
+        if (item == null ||
+                item.getType() != Material.PLAYER_HEAD) {
             return;
         }
 
         ItemMeta meta = item.getItemMeta();
 
-        if (meta == null || meta.getDisplayName() == null) {
+        if (meta == null ||
+                meta.getDisplayName() == null) {
             return;
         }
 
@@ -319,7 +355,9 @@ public final class KingdomGUIListener implements Listener {
         Player target = Bukkit.getPlayerExact(targetName);
 
         if (target == null) {
-            player.sendMessage("§cPlayer tersebut sudah offline.");
+            player.sendMessage(
+                    "§cPlayer tersebut sudah offline."
+            );
             guiManager.openInvitePlayers(player);
             return;
         }
@@ -332,8 +370,8 @@ public final class KingdomGUIListener implements Listener {
 
         if (success) {
             player.sendMessage(
-                    "§aUndangan berhasil dikirim kepada §f" +
-                            target.getName() + "§a."
+                    "§aUndangan berhasil dikirim kepada §f"
+                            + target.getName() + "§a."
             );
 
             target.sendMessage("");
@@ -371,7 +409,9 @@ public final class KingdomGUIListener implements Listener {
             target = UUID.fromString(holder.getTarget());
         } catch (Exception exception) {
             player.closeInventory();
-            player.sendMessage("§cTarget anggota tidak valid.");
+            player.sendMessage(
+                    "§cTarget anggota tidak valid."
+            );
             return;
         }
 
@@ -386,7 +426,9 @@ public final class KingdomGUIListener implements Listener {
             );
 
             if (success) {
-                player.sendMessage("§aRole anggota berhasil dinaikkan.");
+                player.sendMessage(
+                        "§aRole anggota berhasil dinaikkan."
+                );
             } else {
                 player.sendMessage(
                         "§cTidak dapat promote anggota. Periksa permission dan role."
@@ -403,7 +445,9 @@ public final class KingdomGUIListener implements Listener {
             );
 
             if (success) {
-                player.sendMessage("§aRole anggota berhasil diturunkan.");
+                player.sendMessage(
+                        "§aRole anggota berhasil diturunkan."
+                );
             } else {
                 player.sendMessage(
                         "§cTidak dapat demote anggota. Periksa permission dan role."
@@ -454,39 +498,54 @@ public final class KingdomGUIListener implements Listener {
         }
 
         List<KingdomManager.Invitation> invitations =
-                kingdomManager.getInvitations(player.getUniqueId());
+                kingdomManager.getInvitations(
+                        player.getUniqueId()
+                );
 
         if (invitations.isEmpty()) {
-            player.sendMessage("§cUndangan sudah tidak tersedia.");
+            player.sendMessage(
+                    "§cUndangan sudah tidak tersedia."
+            );
             guiManager.openInvitations(player);
             return;
         }
 
         /*
-         * KingdomManager saat ini menerima/menolak undangan
-         * berdasarkan UUID player, bukan ID undangan.
-         *
-         * Karena itu, tombol berikut memproses undangan terbaru.
+         * Untuk sementara manager masih memproses
+         * undangan terbaru, bukan ID undangan individual.
          */
+
         if (rightClick) {
             boolean success =
-                    kingdomManager.denyInvitation(player.getUniqueId());
+                    kingdomManager.denyInvitation(
+                            player.getUniqueId()
+                    );
 
             if (success) {
-                player.sendMessage("§cUndangan Kingdom berhasil ditolak.");
+                player.sendMessage(
+                        "§cUndangan Kingdom berhasil ditolak."
+                );
             } else {
-                player.sendMessage("§cGagal menolak undangan.");
+                player.sendMessage(
+                        "§cGagal menolak undangan."
+                );
             }
 
         } else {
             boolean success =
-                    kingdomManager.acceptInvitation(player.getUniqueId());
+                    kingdomManager.acceptInvitation(
+                            player.getUniqueId()
+                    );
 
             if (success) {
-                player.sendMessage("§aKamu berhasil bergabung dengan Kingdom!");
+                player.sendMessage(
+                        "§aKamu berhasil bergabung dengan Kingdom!"
+                );
 
                 var kingdom =
-                        kingdomManager.getKingdomByPlayer(player.getUniqueId());
+                        kingdomManager.getKingdomByPlayer(
+                                player.getUniqueId()
+                        );
 
                 kingdom.ifPresent(value ->
                         player.sendMessage(
@@ -505,7 +564,7 @@ public final class KingdomGUIListener implements Listener {
     }
 
     // ==========================================
-    // CONFIRMATION
+    // CONFIRMATION MENU
     // ==========================================
 
     private void openConfirmation(
@@ -585,9 +644,13 @@ public final class KingdomGUIListener implements Listener {
             player.closeInventory();
 
             if (success) {
-                player.sendMessage("§aKingdom berhasil dihapus.");
+                player.sendMessage(
+                        "§aKingdom berhasil dihapus."
+                );
             } else {
-                player.sendMessage("§cGagal menghapus Kingdom.");
+                player.sendMessage(
+                        "§cGagal menghapus Kingdom."
+                );
             }
 
             return;
@@ -606,7 +669,9 @@ public final class KingdomGUIListener implements Listener {
             target = UUID.fromString(parts[1]);
         } catch (IllegalArgumentException exception) {
             player.closeInventory();
-            player.sendMessage("§cTarget tidak valid.");
+            player.sendMessage(
+                    "§cTarget tidak valid."
+            );
             return;
         }
 
@@ -617,7 +682,9 @@ public final class KingdomGUIListener implements Listener {
                 );
 
                 if (success) {
-                    player.sendMessage("§aAnggota berhasil dikeluarkan.");
+                    player.sendMessage(
+                            "§aAnggota berhasil dikeluarkan."
+                    );
 
                     Player onlineTarget = Bukkit.getPlayer(target);
 
@@ -627,7 +694,9 @@ public final class KingdomGUIListener implements Listener {
                         );
                     }
                 } else {
-                    player.sendMessage("§cGagal mengeluarkan anggota.");
+                    player.sendMessage(
+                            "§cGagal mengeluarkan anggota."
+                    );
                 }
             }
 
@@ -655,7 +724,9 @@ public final class KingdomGUIListener implements Listener {
                 }
             }
 
-            default -> player.sendMessage("§cTindakan tidak dikenal.");
+            default -> player.sendMessage(
+                    "§cTindakan tidak dikenal."
+            );
         }
 
         guiManager.openMembers(player, 0);
@@ -683,7 +754,9 @@ public final class KingdomGUIListener implements Listener {
             creatingKingdom.remove(uuid);
 
             Bukkit.getScheduler().runTask(plugin, () ->
-                    player.sendMessage("§cPembuatan Kingdom dibatalkan.")
+                    player.sendMessage(
+                            "§cPembuatan Kingdom dibatalkan."
+                    )
             );
 
             return;
@@ -762,7 +835,9 @@ public final class KingdomGUIListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        creatingKingdom.remove(event.getPlayer().getUniqueId());
+        creatingKingdom.remove(
+                event.getPlayer().getUniqueId()
+        );
     }
 
     // ==========================================
