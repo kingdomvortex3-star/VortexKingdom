@@ -1,6 +1,7 @@
 
 plugins {
     id 'java'
+    id 'com.gradleup.shadow' version '9.2.2'
 }
 
 group = 'my.kingdomvortex'
@@ -27,6 +28,8 @@ repositories {
 dependencies {
     compileOnly 'io.papermc.paper:paper-api:26.3.build.2654-stable'
     compileOnly 'me.clip:placeholderapi:2.11.6'
+
+    implementation 'org.xerial:sqlite-jdbc:3.50.3.0'
 }
 
 java {
@@ -44,13 +47,20 @@ processResources {
     filteringCharset = 'UTF-8'
 
     filesMatching('plugin.yml') {
-        expand(
-            version: project.version
-        )
+        expand(version: project.version)
     }
 }
 
-jar {
+shadowJar {
     archiveBaseName = 'VortexKingdom'
     archiveVersion = project.version
+    archiveClassifier = ''
+}
+
+jar {
+    enabled = false
+}
+
+build {
+    dependsOn shadowJar
 }
