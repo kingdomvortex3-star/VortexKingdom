@@ -14,7 +14,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 public final class KingdomFeatureGUIManager {
 
@@ -23,10 +22,6 @@ public final class KingdomFeatureGUIManager {
     public KingdomFeatureGUIManager(VortexKingdom plugin) {
         this.plugin = plugin;
     }
-
-    // ==================================================
-    // HOME MENU
-    // ==================================================
 
     public void openHome(Player player) {
         if (player == null || !player.isOnline()) return;
@@ -56,55 +51,34 @@ public final class KingdomFeatureGUIManager {
 
         holder.setInventory(inventory);
 
-        setItem(
-                inventory,
-                20,
-                Material.RESPAWN_ANCHOR,
+        setItem(inventory, 20, Material.RESPAWN_ANCHOR,
                 "§a§lSet Kingdom Home",
                 "§7Simpan lokasi kamu sebagai",
                 "§7markas Kingdom.",
                 "",
-                "§eKlik untuk menyimpan."
-        );
+                "§eKlik untuk menyimpan.");
 
-        setItem(
-                inventory,
-                22,
-                Material.ENDER_PEARL,
+        setItem(inventory, 22, Material.ENDER_PEARL,
                 "§b§lTeleport to Home",
                 "§7Status: " + (hasHome ? "§aTersedia" : "§cBelum diatur"),
                 "",
                 hasHome
                         ? "§eKlik untuk teleport."
-                        : "§cAtur Home terlebih dahulu."
-        );
+                        : "§cAtur Home terlebih dahulu.");
 
-        setItem(
-                inventory,
-                24,
-                Material.BARRIER,
+        setItem(inventory, 24, Material.BARRIER,
                 "§c§lDelete Home",
                 hasHome
                         ? "§7Hapus lokasi Home Kingdom."
                         : "§cBelum ada Home.",
                 "",
-                "§eKlik untuk menghapus."
-        );
+                "§eKlik untuk menghapus.");
 
-        setItem(
-                inventory,
-                49,
-                Material.ARROW,
-                "§7Kembali"
-        );
+        setItem(inventory, 49, Material.ARROW, "§7Kembali");
 
         fill(inventory);
         player.openInventory(inventory);
     }
-
-    // ==================================================
-    // SETTINGS MENU
-    // ==================================================
 
     public void openSettings(Player player) {
         if (player == null || !player.isOnline()) return;
@@ -137,51 +111,32 @@ public final class KingdomFeatureGUIManager {
 
         holder.setInventory(inventory);
 
-        setItem(
-                inventory,
-                20,
+        setItem(inventory, 20,
                 pvp ? Material.LIME_DYE : Material.GRAY_DYE,
                 "§6§lKingdom PvP",
                 "§7Status: " + (pvp ? "§aON" : "§cOFF"),
                 "",
-                "§eKlik untuk mengubah."
-        );
+                "§eKlik untuk mengubah.");
 
-        setItem(
-                inventory,
-                22,
-                Material.NAME_TAG,
+        setItem(inventory, 22, Material.NAME_TAG,
                 "§e§lKingdom Description",
-                "§7Deskripsi: ",
+                "§7Deskripsi:",
                 "§f" + emptyIfNull(kingdom.getDescription()),
                 "",
-                "§eKlik untuk mengedit."
-        );
+                "§eKlik untuk mengedit.");
 
-        setItem(
-                inventory,
-                24,
+        setItem(inventory, 24,
                 chat ? Material.LIME_DYE : Material.GRAY_DYE,
                 "§b§lKingdom Chat",
                 "§7Status: " + (chat ? "§aON" : "§cOFF"),
                 "",
-                "§eKlik untuk mengubah."
-        );
+                "§eKlik untuk mengubah.");
 
-        setItem(
-                inventory,
-                49,
-                Material.ARROW,
-                "§7Kembali"
-        );
+        setItem(inventory, 49, Material.ARROW, "§7Kembali");
 
         fill(inventory);
         player.openInventory(inventory);
     }
-
-    // ==================================================
-    // DESCRIPTION INPUT
-    // ==================================================
 
     public void openDescriptionInput(Player player) {
         if (player == null || !player.isOnline()) return;
@@ -217,13 +172,8 @@ public final class KingdomFeatureGUIManager {
         }
 
         inventory.setItem(0, input);
-
         player.openInventory(inventory);
     }
-
-    // ==================================================
-    // HOME DELETE CONFIRMATION
-    // ==================================================
 
     public void openHomeDeleteConfirmation(Player player) {
         if (player == null || !player.isOnline()) return;
@@ -241,40 +191,24 @@ public final class KingdomFeatureGUIManager {
 
         holder.setInventory(inventory);
 
-        setItem(
-                inventory,
-                11,
-                Material.LIME_WOOL,
+        setItem(inventory, 11, Material.LIME_WOOL,
                 "§a§lCancel",
-                "§7Kembali tanpa menghapus Home."
-        );
+                "§7Kembali tanpa menghapus Home.");
 
-        setItem(
-                inventory,
-                13,
-                Material.PAPER,
+        setItem(inventory, 13, Material.PAPER,
                 "§e§lConfirmation",
                 "§7Apakah kamu yakin ingin",
-                "§7menghapus Kingdom Home?"
-        );
+                "§7menghapus Kingdom Home?");
 
-        setItem(
-                inventory,
-                15,
-                Material.RED_WOOL,
+        setItem(inventory, 15, Material.RED_WOOL,
                 "§c§lConfirm Delete",
                 "§7Hapus Kingdom Home.",
                 "",
-                "§eKlik untuk mengonfirmasi."
-        );
+                "§eKlik untuk mengonfirmasi.");
 
         fill(inventory);
         player.openInventory(inventory);
     }
-
-    // ==================================================
-    // CREATE KINGDOM INPUT
-    // ==================================================
 
     public void openCreateKingdomInput(Player player) {
         if (player == null || !player.isOnline()) return;
@@ -304,13 +238,8 @@ public final class KingdomFeatureGUIManager {
         }
 
         inventory.setItem(0, input);
-
         player.openInventory(inventory);
     }
-
-    // ==================================================
-    // HELPERS
-    // ==================================================
 
     private Optional<Kingdom> getKingdom(Player player) {
         return plugin.getKingdomManager()
