@@ -1,4 +1,3 @@
-
 settings:
   maximum-level: 100
   base-required-exp: 1000
@@ -37,7 +36,7 @@ sources:
     enabled: true
     exp: 100
     cooldown: 0
-    
+
 boss-rewards:
   enabled: true
 
