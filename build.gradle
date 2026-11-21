@@ -1,0 +1,56 @@
+
+plugins {
+    id 'java'
+}
+
+group = 'my.kingdomvortex'
+version = '1.0.0'
+
+base {
+    archivesName = 'VortexKingdom'
+}
+
+repositories {
+    mavenCentral()
+
+    maven {
+        name = 'papermc'
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
+
+    maven {
+        name = 'placeholderapi'
+        url = 'https://repo.extendedclip.com/releases/'
+    }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:26.3.build.2654-stable'
+    compileOnly 'me.clip:placeholderapi:2.11.6'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}
+
+processResources {
+    filteringCharset = 'UTF-8'
+
+    filesMatching('plugin.yml') {
+        expand(
+            version: project.version
+        )
+    }
+}
+
+jar {
+    archiveBaseName = 'VortexKingdom'
+    archiveVersion = project.version
+}
