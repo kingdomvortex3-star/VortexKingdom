@@ -10,6 +10,7 @@ import my.kingdomvortex.vortexkingdom.level.KingdomLevelManager;
 import my.kingdomvortex.vortexkingdom.listener.KingdomExpListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomGUIListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomLeaderboardGUIListener;
+import my.kingdomvortex.vortexkingdom.manager.KingdomFeatureManager;
 import my.kingdomvortex.vortexkingdom.manager.KingdomLeaderboardManager;
 import my.kingdomvortex.vortexkingdom.manager.KingdomManager;
 import my.kingdomvortex.vortexkingdom.placeholder.KingdomPlaceholder;
@@ -30,6 +31,7 @@ public final class VortexKingdom extends JavaPlugin {
     private KingdomLevelManager levelManager;
     private ExpRewardManager expRewardManager;
     private KingdomLeaderboardManager leaderboardManager;
+    private KingdomFeatureManager featureManager;
 
     private KingdomGUIManager guiManager;
     private KingdomLeaderboardGUIManager leaderboardGUIManager;
@@ -55,8 +57,12 @@ public final class VortexKingdom extends JavaPlugin {
             expRewardManager = new ExpRewardManager(this);
             leaderboardManager = new KingdomLeaderboardManager(this);
 
+            // New kingdom features
+            featureManager = new KingdomFeatureManager(this);
+
             guiManager = new KingdomGUIManager(this);
-            leaderboardGUIManager = new KingdomLeaderboardGUIManager(this);
+            leaderboardGUIManager =
+                    new KingdomLeaderboardGUIManager(this);
 
             getServer().getPluginManager().registerEvents(
                     new KingdomGUIListener(this, guiManager),
@@ -77,7 +83,10 @@ public final class VortexKingdom extends JavaPlugin {
             registerPlaceholder();
 
         } catch (Exception exception) {
-            getLogger().severe("Failed to initialize VortexKingdom!");
+            getLogger().severe(
+                    "Failed to initialize VortexKingdom!"
+            );
+
             exception.printStackTrace();
 
             if (databaseManager != null) {
@@ -96,11 +105,14 @@ public final class VortexKingdom extends JavaPlugin {
         getLogger().info("Level Manager: Loaded");
         getLogger().info("EXP Reward Manager: Loaded");
         getLogger().info("Leaderboard Manager: Loaded");
+        getLogger().info("Feature Manager: Loaded");
         getLogger().info("GUI Manager: Loaded");
         getLogger().info("Listeners: Registered");
         getLogger().info(
                 "PlaceholderAPI: "
-                        + (placeholder != null ? "Registered" : "Not Installed")
+                        + (placeholder != null
+                        ? "Registered"
+                        : "Not Installed")
         );
         getLogger().info("==================================");
     }
@@ -134,15 +146,20 @@ public final class VortexKingdom extends JavaPlugin {
         }
 
         KingdomCommand executor = new KingdomCommand(this);
+
         command.setExecutor(executor);
         command.setTabCompleter(executor);
     }
 
     private void registerPlaceholder() {
-        if (!getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+        if (!getServer().getPluginManager()
+                .isPluginEnabled("PlaceholderAPI")) {
+
             getLogger().info(
-                    "PlaceholderAPI not found. Placeholder support disabled."
+                    "PlaceholderAPI not found. "
+                            + "Placeholder support disabled."
             );
+
             return;
         }
 
@@ -169,6 +186,7 @@ public final class VortexKingdom extends JavaPlugin {
         }
 
         getLogger().info("VortexKingdom disabled.");
+
         instance = null;
     }
 
@@ -194,6 +212,10 @@ public final class VortexKingdom extends JavaPlugin {
 
     public KingdomLeaderboardManager getLeaderboardManager() {
         return leaderboardManager;
+    }
+
+    public KingdomFeatureManager getFeatureManager() {
+        return featureManager;
     }
 
     public KingdomGUIManager getGuiManager() {
