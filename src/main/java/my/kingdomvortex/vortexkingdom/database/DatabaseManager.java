@@ -1,3 +1,4 @@
+
 package my.kingdomvortex.vortexkingdom.database;
 
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
@@ -91,10 +92,30 @@ public final class DatabaseManager {
     }
 
     private void configureConnection() throws SQLException {
+        int busyTimeout = Math.max(
+                1000,
+                plugin.getConfig().getInt(
+                        "database.busy-timeout",
+                        5000
+                )
+        );
+
+        String journalMode = plugin.getConfig().getString(
+                "database.journal-mode",
+                "WAL"
+        );
+
+        if (journalMode == null
+                || !journalMode.matches("(?i)WAL|DELETE|TRUNCATE|PERSIST|MEMORY|OFF")) {
+            journalMode = "WAL";
+        }
+
         try (Statement statement = connection.createStatement()) {
-            statement.execute("PRAGMA busy_timeout = 5000");
+            statement.execute("PRAGMA busy_timeout = " + busyTimeout);
             statement.execute("PRAGMA foreign_keys = ON");
-            statement.execute("PRAGMA journal_mode = WAL");
+            statement.execute(
+                    "PRAGMA journal_mode = " + journalMode
+            );
             statement.execute("PRAGMA synchronous = NORMAL");
             statement.execute("PRAGMA temp_store = MEMORY");
             statement.execute("PRAGMA cache_size = -8000");
@@ -554,4 +575,4 @@ public final class DatabaseManager {
             connection = null;
         }
     }
-        }
+}
