@@ -1,0 +1,27 @@
+
+name: VortexKingdom
+version: '${version}'
+main: my.kingdomvortex.vortexkingdom.VortexKingdom
+api-version: '1.21'
+author: KingdomVortex
+description: Advanced Kingdom System with GUI, EXP, Levels and Leaderboards.
+
+softdepend:
+  - PlaceholderAPI
+
+commands:
+  kingdom:
+    description: Main Kingdom command
+    aliases:
+      - k
+      - king
+    usage: /kingdom
+
+permissions:
+  vortexkingdom.admin:
+    description: Access to all Kingdom administration commands
+    default: op
+
+  vortexkingdom.use:
+    description: Use the Kingdom system
+    default: true
