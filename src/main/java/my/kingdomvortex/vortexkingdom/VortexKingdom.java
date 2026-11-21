@@ -162,7 +162,9 @@ public final class VortexKingdom extends JavaPlugin {
 
     private void registerPlaceholder() {
         if (!getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            getLogger().info("PlaceholderAPI not found.");
+            getLogger().info(
+                    "PlaceholderAPI not found. Placeholder support disabled."
+            );
             return;
         }
 
@@ -171,7 +173,7 @@ public final class VortexKingdom extends JavaPlugin {
         if (!placeholder.register()) {
             placeholder = null;
             getLogger().warning(
-                    "Failed to register PlaceholderAPI expansion."
+                    "Failed to register Kingdom PlaceholderAPI expansion."
             );
         }
     }
