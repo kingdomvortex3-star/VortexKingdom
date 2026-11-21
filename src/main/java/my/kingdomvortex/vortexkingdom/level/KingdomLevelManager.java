@@ -20,42 +20,44 @@ public final class KingdomLevelManager {
     }
 
     public long getRequiredExp(int level) {
-        int maxLevel = getMaxLevel();
-
-        if (level >= maxLevel) {
+        if (level >= getMaxLevel()) {
             return 0;
         }
 
-        double base = plugin.getConfig().getDouble(
-                "exp.base-required-exp", 1000
+        double base = plugin.getExpConfig().getDouble(
+                "settings.base-required-exp", 1000
         );
 
-        double growth = plugin.getConfig().getDouble(
-                "exp.growth-rate", 1.18
+        double growth = plugin.getExpConfig().getDouble(
+                "settings.growth-rate", 1.18
         );
+
+        if (base < 1 || growth <= 1) {
+            return 0;
+        }
 
         double required = base * Math.pow(growth, level - 1);
+
+        if (!Double.isFinite(required) || required > Long.MAX_VALUE) {
+            return Long.MAX_VALUE;
+        }
 
         return Math.max(1, Math.round(required));
     }
 
     public int getMaxLevel() {
-        return plugin.getExpConfig().getInt(
+        return Math.max(1, plugin.getExpConfig().getInt(
                 "settings.maximum-level", 100
-        );
+        ));
     }
 
     public long getCurrentExp(UUID player) {
-        Optional<Kingdom> optional = getKingdom(player);
-
-        if (optional.isEmpty()) {
-            return 0;
-        }
-
-        return optional.get().getExperience();
+        return getKingdom(player)
+                .map(Kingdom::getExperience)
+                .orElse(0L);
     }
 
-    public boolean addExp(UUID player, long amount) {
+    public synchronized boolean addExp(UUID player, long amount) {
         if (amount <= 0) {
             return false;
         }
@@ -78,43 +80,40 @@ public final class KingdomLevelManager {
             return false;
         }
 
-        long newExp = Math.min(
-                required,
-                kingdom.getExperience() + amount
-        );
-
-        long actualGain = newExp - kingdom.getExperience();
+        long currentExp = kingdom.getExperience();
+        long actualGain = Math.min(amount, required - currentExp);
 
         if (actualGain <= 0) {
             return false;
         }
 
-        try {
-            Connection connection = plugin.getDatabaseManager()
-                    .getConnection();
+        boolean levelUp = actualGain >= required - currentExp;
 
-            boolean levelUp = newExp >= required;
+        String sql = """
+                UPDATE kingdoms
+                SET experience = ?,
+                    total_experience = total_experience + ?,
+                    level = level + ?
+                WHERE id = ?
+                  AND level = ?
+                  AND experience = ?
+                  AND level < ?
+                """;
 
-            try (PreparedStatement statement =
-                         connection.prepareStatement(
-                                 """
-                                 UPDATE kingdoms
-                                 SET experience = ?,
-                                     total_experience = total_experience + ?,
-                                     level = level + ?
-                                 WHERE id = ? AND level < ?
-                                 """
-                         )) {
+        try (PreparedStatement statement =
+                     plugin.getDatabaseManager().getConnection()
+                             .prepareStatement(sql)) {
 
-                statement.setLong(1, levelUp ? 0 : newExp);
-                statement.setLong(2, actualGain);
-                statement.setInt(3, levelUp ? 1 : 0);
-                statement.setInt(4, kingdom.getId());
-                statement.setInt(5, getMaxLevel());
+            statement.setLong(1, levelUp ? 0 : currentExp + actualGain);
+            statement.setLong(2, actualGain);
+            statement.setInt(3, levelUp ? 1 : 0);
+            statement.setInt(4, kingdom.getId());
+            statement.setInt(5, kingdom.getLevel());
+            statement.setLong(6, currentExp);
+            statement.setInt(7, getMaxLevel());
 
-                if (statement.executeUpdate() <= 0) {
-                    return false;
-                }
+            if (statement.executeUpdate() <= 0) {
+                return false;
             }
 
             if (levelUp) {
@@ -131,15 +130,14 @@ public final class KingdomLevelManager {
                     "Failed to add Kingdom EXP: " +
                             exception.getMessage()
             );
-
             return false;
         }
     }
 
     public long getTotalExp(UUID player) {
-        Optional<Kingdom> optional = getKingdom(player);
-
-        return optional.map(Kingdom::getTotalExperience).orElse(0L);
+        return getKingdom(player)
+                .map(Kingdom::getTotalExperience)
+                .orElse(0L);
     }
 
     public double getProgress(UUID player) {
@@ -187,7 +185,7 @@ public final class KingdomLevelManager {
         );
     }
 
-    public boolean setExp(UUID player, long amount) {
+    public synchronized boolean setExp(UUID player, long amount) {
         if (amount < 0) {
             return false;
         }
@@ -204,20 +202,23 @@ public final class KingdomLevelManager {
             return false;
         }
 
-        long required = getRequiredExp(kingdom.getLevel());
-
-        if (amount >= required) {
+        if (amount >= getRequiredExp(kingdom.getLevel())) {
             return false;
         }
 
         try (PreparedStatement statement =
                      plugin.getDatabaseManager().getConnection()
                              .prepareStatement(
-                                     "UPDATE kingdoms SET experience = ? WHERE id = ?"
+                                     """
+                                     UPDATE kingdoms
+                                     SET experience = ?
+                                     WHERE id = ? AND level = ?
+                                     """
                              )) {
 
             statement.setLong(1, amount);
             statement.setInt(2, kingdom.getId());
+            statement.setInt(3, kingdom.getLevel());
 
             return statement.executeUpdate() > 0;
 
@@ -226,12 +227,11 @@ public final class KingdomLevelManager {
                     "Failed to set Kingdom EXP: " +
                             exception.getMessage()
             );
-
             return false;
         }
     }
 
-    public boolean setLevel(UUID player, int level) {
+    public synchronized boolean setLevel(UUID player, int level) {
         if (level < 1 || level > getMaxLevel()) {
             return false;
         }
@@ -262,13 +262,13 @@ public final class KingdomLevelManager {
                     "Failed to set Kingdom level: " +
                             exception.getMessage()
             );
-
             return false;
         }
     }
 
     private Optional<Kingdom> getKingdom(UUID player) {
-        return plugin.getKingdomManager().getKingdomByPlayer(player);
+        return plugin.getKingdomManager()
+                .getKingdomByPlayer(player);
     }
 
     private void handleLevelUp(String name, int level) {
