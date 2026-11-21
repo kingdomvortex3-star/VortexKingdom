@@ -34,7 +34,8 @@ public final class KingdomLevelManager {
                 "settings.growth-rate", 1.18
         );
 
-        if (base < 1 || growth < 1) {
+        if (!Double.isFinite(base) || !Double.isFinite(growth)
+                || base < 1 || growth < 1) {
             return 0;
         }
 
@@ -113,10 +114,10 @@ public final class KingdomLevelManager {
     /**
      * Menambahkan EXP ke Kingdom.
      * Mendukung kenaikan beberapa level sekaligus.
-     * Sisa EXP dibawa ke level berikutnya.
+     * Sisa EXP akan dibawa ke level berikutnya.
      *
-     * Tidak melakukan commit sendiri agar tetap kompatibel
-     * dengan transaksi milik ExpRewardManager.
+     * Method ini tidak melakukan commit sendiri.
+     * Transaksi dapat dikelola oleh ExpRewardManager.
      */
     public boolean addExp(UUID player, long amount) {
         if (player == null || amount <= 0) {
@@ -200,7 +201,7 @@ public final class KingdomLevelManager {
                         break;
                     }
 
-                    long needed = required - newExp;
+                    long needed = Math.max(0, required - newExp);
 
                     if (needed <= 0) {
                         newLevel++;
@@ -211,6 +212,7 @@ public final class KingdomLevelManager {
 
                     if (remainingAmount >= needed) {
                         remainingAmount -= needed;
+
                         acceptedExp = saturatedAdd(
                                 acceptedExp,
                                 needed
@@ -218,7 +220,6 @@ public final class KingdomLevelManager {
 
                         newLevel++;
                         newExp = 0;
-
                         levelUps.add(newLevel);
                     } else {
                         newExp = saturatedAdd(
