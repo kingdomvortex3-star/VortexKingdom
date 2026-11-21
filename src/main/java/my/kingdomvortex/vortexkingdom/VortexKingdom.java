@@ -10,6 +10,7 @@ import my.kingdomvortex.vortexkingdom.gui.KingdomLeaderboardGUIManager;
 import my.kingdomvortex.vortexkingdom.level.ExpRewardManager;
 import my.kingdomvortex.vortexkingdom.level.KingdomLevelManager;
 import my.kingdomvortex.vortexkingdom.listener.KingdomExpListener;
+import my.kingdomvortex.vortexkingdom.listener.KingdomFeatureEntryListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomFeatureListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomGUIListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomLeaderboardGUIListener;
@@ -68,11 +69,7 @@ public final class VortexKingdom extends JavaPlugin {
             featureGUIManager = new KingdomFeatureGUIManager(this);
 
             getServer().getPluginManager().registerEvents(
-                    new KingdomGUIListener(
-                            this,
-                            guiManager,
-                            featureGUIManager
-                    ),
+                    new KingdomGUIListener(this, guiManager),
                     this
             );
 
@@ -87,7 +84,12 @@ public final class VortexKingdom extends JavaPlugin {
             );
 
             getServer().getPluginManager().registerEvents(
-                    new KingdomFeatureListener(this),
+                    new KingdomFeatureListener(this, featureGUIManager),
+                    this
+            );
+
+            getServer().getPluginManager().registerEvents(
+                    new KingdomFeatureEntryListener(this, featureGUIManager),
                     this
             );
 
@@ -160,9 +162,7 @@ public final class VortexKingdom extends JavaPlugin {
 
     private void registerPlaceholder() {
         if (!getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            getLogger().info(
-                    "PlaceholderAPI not found. Placeholder support disabled."
-            );
+            getLogger().info("PlaceholderAPI not found.");
             return;
         }
 
@@ -171,7 +171,7 @@ public final class VortexKingdom extends JavaPlugin {
         if (!placeholder.register()) {
             placeholder = null;
             getLogger().warning(
-                    "Failed to register Kingdom PlaceholderAPI expansion."
+                    "Failed to register PlaceholderAPI expansion."
             );
         }
     }
@@ -235,28 +235,3 @@ public final class VortexKingdom extends JavaPlugin {
         return expConfig;
     }
 }
-
-getServer().getPluginManager().registerEvents(
-        new KingdomGUIListener(this, guiManager),
-        this
-);
-
-getServer().getPluginManager().registerEvents(
-        new KingdomExpListener(this),
-        this
-);
-
-getServer().getPluginManager().registerEvents(
-        new KingdomLeaderboardGUIListener(this),
-        this
-);
-
-getServer().getPluginManager().registerEvents(
-        new KingdomFeatureListener(this, featureGUIManager),
-        this
-);
-
-getServer().getPluginManager().registerEvents(
-        new KingdomFeatureEntryListener(this, featureGUIManager),
-        this
-);
