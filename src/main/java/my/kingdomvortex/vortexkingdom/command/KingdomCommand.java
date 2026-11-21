@@ -1,4 +1,3 @@
-
 package my.kingdomvortex.vortexkingdom.command;
 
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
@@ -218,4 +217,4 @@ public final class KingdomCommand implements CommandExecutor, TabCompleter {
 
         return suggestions;
     }
-}
+    }
