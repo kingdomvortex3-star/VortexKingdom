@@ -41,7 +41,7 @@ public final class KingdomLeaderboardManager {
             }
 
             try {
-                return valueOf(value.toUpperCase());
+                return valueOf(value.trim().toUpperCase());
             } catch (IllegalArgumentException exception) {
                 return LEVEL;
             }
@@ -64,7 +64,7 @@ public final class KingdomLeaderboardManager {
     /**
      * Mengambil leaderboard berdasarkan kategori.
      */
-    public synchronized List<LeaderboardEntry> getTop(
+    public List<LeaderboardEntry> getTop(
             LeaderboardType type,
             int limit
     ) {
@@ -82,13 +82,18 @@ public final class KingdomLeaderboardManager {
                     k.level,
                     k.total_experience,
                     k.total_kills,
-                    (
-                        SELECT COUNT(*)
-                        FROM kingdom_members km
-                        WHERE km.kingdom_id = k.id
-                    ) AS member_count
+                    COUNT(km.player_uuid) AS member_count
                 FROM kingdoms k
-                ORDER BY %s DESC, k.name ASC
+                LEFT JOIN kingdom_members km
+                    ON km.kingdom_id = k.id
+                GROUP BY
+                    k.id,
+                    k.name,
+                    k.owner_uuid,
+                    k.level,
+                    k.total_experience,
+                    k.total_kills
+                ORDER BY %s DESC, k.name COLLATE NOCASE ASC, k.id ASC
                 LIMIT ?
                 """.formatted(type.getColumn());
 
@@ -128,30 +133,18 @@ public final class KingdomLeaderboardManager {
         return entries;
     }
 
-    /**
-     * Mengambil leaderboard Level.
-     */
     public List<LeaderboardEntry> getTopLevel(int limit) {
         return getTop(LeaderboardType.LEVEL, limit);
     }
 
-    /**
-     * Mengambil leaderboard Total EXP.
-     */
     public List<LeaderboardEntry> getTopExperience(int limit) {
         return getTop(LeaderboardType.EXPERIENCE, limit);
     }
 
-    /**
-     * Mengambil leaderboard Jumlah Member.
-     */
     public List<LeaderboardEntry> getTopMembers(int limit) {
         return getTop(LeaderboardType.MEMBERS, limit);
     }
 
-    /**
-     * Mengambil leaderboard Total Kills.
-     */
     public List<LeaderboardEntry> getTopKills(int limit) {
         return getTop(LeaderboardType.KILLS, limit);
     }
@@ -160,34 +153,71 @@ public final class KingdomLeaderboardManager {
      * Mendapatkan posisi Kingdom pada kategori tertentu.
      * Mengembalikan 0 jika Kingdom tidak ditemukan.
      */
-    public synchronized int getRank(
+    public int getRank(
             int kingdomId,
             LeaderboardType type
     ) {
+        if (kingdomId <= 0) {
+            return 0;
+        }
+
         if (type == null) {
             type = LeaderboardType.LEVEL;
         }
 
+        String scoreExpression = switch (type) {
+            case LEVEL -> "current.level";
+            case EXPERIENCE -> "current.total_experience";
+            case MEMBERS -> """
+                    (
+                        SELECT COUNT(*)
+                        FROM kingdom_members current_members
+                        WHERE current_members.kingdom_id = current.id
+                    )
+                    """;
+            case KILLS -> "current.total_kills";
+        };
+
+        String otherScoreExpression = switch (type) {
+            case LEVEL -> "other.level";
+            case EXPERIENCE -> "other.total_experience";
+            case MEMBERS -> """
+                    (
+                        SELECT COUNT(*)
+                        FROM kingdom_members other_members
+                        WHERE other_members.kingdom_id = other.id
+                    )
+                    """;
+            case KILLS -> "other.total_kills";
+        };
+
         String sql = """
                 SELECT
-                    current.id,
                     (
                         SELECT COUNT(*) + 1
                         FROM kingdoms other
                         WHERE
-                            other.%s > current.%s
+                            %s > %s
                             OR (
-                                other.%s = current.%s
-                                AND other.name < current.name
+                                %s = %s
+                                AND (
+                                    other.name COLLATE NOCASE
+                                        < current.name COLLATE NOCASE
+                                    OR (
+                                        other.name COLLATE NOCASE
+                                            = current.name COLLATE NOCASE
+                                        AND other.id < current.id
+                                    )
+                                )
                             )
                     ) AS kingdom_rank
                 FROM kingdoms current
                 WHERE current.id = ?
                 """.formatted(
-                type.getColumn(),
-                type.getColumn(),
-                type.getColumn(),
-                type.getColumn()
+                otherScoreExpression,
+                scoreExpression,
+                otherScoreExpression,
+                scoreExpression
         );
 
         try {
@@ -218,12 +248,16 @@ public final class KingdomLeaderboardManager {
     }
 
     /**
-     * Mendapatkan data Kingdom pada leaderboard.
+     * Mengambil data Kingdom pada leaderboard.
      */
-    public synchronized LeaderboardEntry getKingdomEntry(
+    public LeaderboardEntry getKingdomEntry(
             int kingdomId,
             LeaderboardType type
     ) {
+        if (kingdomId <= 0) {
+            return null;
+        }
+
         if (type == null) {
             type = LeaderboardType.LEVEL;
         }
@@ -236,13 +270,18 @@ public final class KingdomLeaderboardManager {
                     k.level,
                     k.total_experience,
                     k.total_kills,
-                    (
-                        SELECT COUNT(*)
-                        FROM kingdom_members km
-                        WHERE km.kingdom_id = k.id
-                    ) AS member_count
+                    COUNT(km.player_uuid) AS member_count
                 FROM kingdoms k
+                LEFT JOIN kingdom_members km
+                    ON km.kingdom_id = k.id
                 WHERE k.id = ?
+                GROUP BY
+                    k.id,
+                    k.name,
+                    k.owner_uuid,
+                    k.level,
+                    k.total_experience,
+                    k.total_kills
                 """;
 
         try {
@@ -260,11 +299,9 @@ public final class KingdomLeaderboardManager {
                             return null;
                         }
 
-                        return mapEntry(
-                                result,
-                                type,
-                                getRank(kingdomId, type)
-                        );
+                        int rank = getRank(kingdomId, type);
+
+                        return mapEntry(result, type, rank);
                     }
                 }
             }
