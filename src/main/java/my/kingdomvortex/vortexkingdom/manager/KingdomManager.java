@@ -1,4 +1,3 @@
-
 package my.kingdomvortex.vortexkingdom.manager;
 
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
@@ -1384,4 +1383,4 @@ public final class KingdomManager {
             long expiresAt
     ) {
     }
-}
+    }
