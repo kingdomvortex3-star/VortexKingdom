@@ -3,6 +3,7 @@ package my.kingdomvortex.vortexkingdom.listener;
 
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
 import my.kingdomvortex.vortexkingdom.gui.KingdomGUIManager;
+import my.kingdomvortex.vortexkingdom.gui.KingdomFeatureGUIManager;
 import my.kingdomvortex.vortexkingdom.gui.KingdomMenuHolder;
 import my.kingdomvortex.vortexkingdom.kingdom.KingdomMember.Role;
 import my.kingdomvortex.vortexkingdom.manager.KingdomManager;
@@ -21,7 +22,6 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,6 +39,7 @@ public final class KingdomGUIListener implements Listener {
 
     private final VortexKingdom plugin;
     private final KingdomGUIManager gui;
+    private final KingdomFeatureGUIManager featureGUI;
     private final KingdomManager kingdoms;
 
     private final Set<UUID> creationRequests =
@@ -46,16 +47,14 @@ public final class KingdomGUIListener implements Listener {
 
     public KingdomGUIListener(
             VortexKingdom plugin,
-            KingdomGUIManager gui
+            KingdomGUIManager gui,
+            KingdomFeatureGUIManager featureGUI
     ) {
         this.plugin = plugin;
         this.gui = gui;
+        this.featureGUI = featureGUI;
         this.kingdoms = plugin.getKingdomManager();
     }
-
-    // ==================================================
-    // INVENTORY CLICK
-    // ==================================================
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
@@ -91,12 +90,10 @@ public final class KingdomGUIListener implements Listener {
             case MEMBER_ACTIONS -> handleMemberActions(player, holder, slot);
             case INVITATIONS -> handleInvitations(player, event, slot);
             case CONFIRMATION -> handleConfirmation(player, holder, slot);
+            default -> {
+            }
         }
     }
-
-    // ==================================================
-    // MAIN MENU
-    // ==================================================
 
     private void handleMain(Player player, int slot) {
         boolean hasKingdom = kingdoms.getKingdomByPlayer(
@@ -135,13 +132,22 @@ public final class KingdomGUIListener implements Listener {
             }
 
             case 16 -> {
-                player.closeInventory();
-                player.sendMessage(
-                        PREFIX + "§eFitur Kingdom Home belum tersedia."
-                );
+                if (hasKingdom) {
+                    featureGUI.openHome(player);
+                } else {
+                    player.sendMessage(
+                            PREFIX + "§cKamu belum memiliki Kingdom."
+                    );
+                }
             }
 
-            case 22 -> startCreation(player, hasKingdom);
+            case 22 -> {
+                if (hasKingdom) {
+                    featureGUI.openSettings(player);
+                } else {
+                    startCreation(player, false);
+                }
+            }
 
             case 38 -> plugin.getLeaderboardGUIManager().open(
                     player,
@@ -182,10 +188,6 @@ public final class KingdomGUIListener implements Listener {
         player.sendMessage("§7Ketik §cCANCEL §7untuk membatalkan.");
         player.sendMessage(" ");
     }
-
-    // ==================================================
-    // PROFILE
-    // ==================================================
 
     private void handleProfile(Player player, int slot) {
         switch (slot) {
@@ -232,19 +234,11 @@ public final class KingdomGUIListener implements Listener {
         }
     }
 
-    // ==================================================
-    // LEVEL
-    // ==================================================
-
     private void handleLevel(Player player, int slot) {
         if (slot == 49) {
             gui.openProfile(player);
         }
     }
-
-    // ==================================================
-    // MEMBERS
-    // ==================================================
 
     private void handleMembers(
             Player player,
@@ -303,10 +297,6 @@ public final class KingdomGUIListener implements Listener {
 
         gui.openMemberActions(player, target);
     }
-
-    // ==================================================
-    // INVITE PLAYERS
-    // ==================================================
 
     private void handleInvitePlayers(Player player, int slot) {
         if (slot == 49) {
@@ -386,10 +376,6 @@ public final class KingdomGUIListener implements Listener {
 
         gui.openInvitePlayers(player);
     }
-
-    // ==================================================
-    // MEMBER ACTIONS
-    // ==================================================
 
     private void handleMemberActions(
             Player player,
@@ -496,10 +482,6 @@ public final class KingdomGUIListener implements Listener {
         }
     }
 
-    // ==================================================
-    // INVITATIONS
-    // ==================================================
-
     private void handleInvitations(
             Player player,
             InventoryClickEvent event,
@@ -585,10 +567,6 @@ public final class KingdomGUIListener implements Listener {
             gui.openInvitations(player);
         }
     }
-
-    // ==================================================
-    // CONFIRMATION
-    // ==================================================
 
     private void handleConfirmation(
             Player player,
@@ -677,10 +655,6 @@ public final class KingdomGUIListener implements Listener {
         player.closeInventory();
     }
 
-    // ==================================================
-    // KINGDOM CREATION CHAT
-    // ==================================================
-
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
@@ -748,10 +722,6 @@ public final class KingdomGUIListener implements Listener {
         });
     }
 
-    // ==================================================
-    // INVENTORY DRAG
-    // ==================================================
-
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
         if (event.getView().getTopInventory().getHolder()
@@ -760,20 +730,12 @@ public final class KingdomGUIListener implements Listener {
         }
     }
 
-    // ==================================================
-    // PLAYER QUIT
-    // ==================================================
-
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         creationRequests.remove(
                 event.getPlayer().getUniqueId()
         );
     }
-
-    // ==================================================
-    // PERMISSION HELPERS
-    // ==================================================
 
     private boolean canInvite(Player player) {
         var member = kingdoms.getMember(player.getUniqueId());
@@ -808,10 +770,6 @@ public final class KingdomGUIListener implements Listener {
 
         return false;
     }
-
-    // ==================================================
-    // ITEM DATA HELPERS
-    // ==================================================
 
     private ItemStack eventItem(Player player, int slot) {
         return player.getOpenInventory()
