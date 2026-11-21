@@ -126,14 +126,22 @@ public final class KingdomGUIListener implements Listener {
                 }
             }
 
+            // Home dibuka oleh KingdomFeatureEntryListener.
             case 16 -> {
-                player.closeInventory();
-                player.sendMessage(
-                        PREFIX + "§eFitur Kingdom Home belum tersedia."
-                );
+                if (!hasKingdom) {
+                    player.sendMessage(
+                            PREFIX + "§cKamu belum memiliki Kingdom."
+                    );
+                }
             }
 
-            case 22 -> startCreation(player, hasKingdom);
+            // Settings dibuka oleh KingdomFeatureEntryListener.
+            // Jika belum punya Kingdom, slot ini tetap untuk membuat Kingdom.
+            case 22 -> {
+                if (!hasKingdom) {
+                    startCreation(player, false);
+                }
+            }
 
             case 38 -> plugin.getLeaderboardGUIManager().open(
                     player,
