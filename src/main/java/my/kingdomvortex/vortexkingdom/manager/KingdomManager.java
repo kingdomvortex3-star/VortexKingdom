@@ -35,7 +35,8 @@ public final class KingdomManager {
             String ownerName,
             String kingdomName
     ) {
-        if (!isValidName(kingdomName)) {
+        if (owner == null || ownerName == null ||
+                !isValidName(kingdomName)) {
             return false;
         }
 
@@ -65,7 +66,6 @@ public final class KingdomManager {
                 }
 
                 long now = System.currentTimeMillis();
-
                 int kingdomId;
 
                 try (PreparedStatement statement =
@@ -111,7 +111,6 @@ public final class KingdomManager {
                     statement.setString(2, owner.toString());
                     statement.setString(3, ownerName);
                     statement.setLong(4, now);
-
                     statement.executeUpdate();
                 }
 
@@ -152,6 +151,10 @@ public final class KingdomManager {
     public synchronized Optional<Kingdom> getKingdomByPlayer(
             UUID player
     ) {
+        if (player == null) {
+            return Optional.empty();
+        }
+
         String sql = """
                 SELECT k.*
                 FROM kingdoms k
@@ -181,12 +184,16 @@ public final class KingdomManager {
     public synchronized Optional<Kingdom> getKingdomByName(
             String name
     ) {
+        if (name == null) {
+            return Optional.empty();
+        }
+
         try (PreparedStatement statement =
                      database.getConnection().prepareStatement(
                              "SELECT * FROM kingdoms WHERE name = ?"
                      )) {
 
-            statement.setString(1, name);
+            statement.setString(1, name.trim());
 
             try (ResultSet result = statement.executeQuery()) {
                 if (result.next()) {
@@ -229,6 +236,10 @@ public final class KingdomManager {
     public synchronized Optional<KingdomMember> getMember(
             UUID player
     ) {
+        if (player == null) {
+            return Optional.empty();
+        }
+
         try (PreparedStatement statement =
                      database.getConnection().prepareStatement(
                              """
@@ -330,7 +341,8 @@ public final class KingdomManager {
             UUID target,
             String targetName
     ) {
-        if (inviter.equals(target)) {
+        if (inviter == null || target == null ||
+                inviter.equals(target)) {
             return false;
         }
 
@@ -369,8 +381,47 @@ public final class KingdomManager {
                 "invitation.maximum-pending-invitations", 10
         );
 
+        Connection connection = database.getConnection();
+
         try {
-            Connection connection = database.getConnection();
+            // Bersihkan undangan kedaluwarsa milik target.
+            try (PreparedStatement cleanup =
+                         connection.prepareStatement(
+                                 """
+                                 DELETE FROM kingdom_invitations
+                                 WHERE target_uuid = ?
+                                 AND expires_at <= ?
+                                 """
+                         )) {
+
+                cleanup.setString(1, target.toString());
+                cleanup.setLong(2, System.currentTimeMillis());
+                cleanup.executeUpdate();
+            }
+
+            // Cegah target menerima undangan dari beberapa kingdom
+            // sekaligus jika sistem hanya mengizinkan satu undangan aktif.
+            try (PreparedStatement existing =
+                         connection.prepareStatement(
+                                 """
+                                 SELECT id FROM kingdom_invitations
+                                 WHERE target_uuid = ?
+                                 AND expires_at > ?
+                                 AND kingdom_id != ?
+                                 LIMIT 1
+                                 """
+                         )) {
+
+                existing.setString(1, target.toString());
+                existing.setLong(2, System.currentTimeMillis());
+                existing.setInt(3, kingdom.getId());
+
+                try (ResultSet result = existing.executeQuery()) {
+                    if (result.next()) {
+                        return false;
+                    }
+                }
+            }
 
             try (PreparedStatement count =
                          connection.prepareStatement(
@@ -433,6 +484,10 @@ public final class KingdomManager {
     public synchronized List<Invitation> getInvitations(UUID player) {
         List<Invitation> invitations = new ArrayList<>();
 
+        if (player == null) {
+            return invitations;
+        }
+
         String sql = """
                 SELECT i.*, k.name AS kingdom_name
                 FROM kingdom_invitations i
@@ -468,7 +523,15 @@ public final class KingdomManager {
         return invitations;
     }
 
-    public synchronized boolean acceptInvitation(UUID player) {
+    // Terima undangan berdasarkan ID tertentu.
+    public synchronized boolean acceptInvitation(
+            UUID player,
+            int invitationId
+    ) {
+        if (player == null || invitationId <= 0) {
+            return false;
+        }
+
         Connection connection = database.getConnection();
 
         try {
@@ -487,16 +550,18 @@ public final class KingdomManager {
                 try (PreparedStatement statement =
                              connection.prepareStatement(
                                      """
-                                     SELECT i.kingdom_id, i.expires_at, k.level
+                                     SELECT i.kingdom_id,
+                                            i.expires_at,
+                                            k.level
                                      FROM kingdom_invitations i
                                      JOIN kingdoms k ON k.id = i.kingdom_id
-                                     WHERE i.target_uuid = ?
-                                     ORDER BY i.created_at DESC
-                                     LIMIT 1
+                                     WHERE i.id = ?
+                                     AND i.target_uuid = ?
                                      """
                              )) {
 
-                    statement.setString(1, player.toString());
+                    statement.setInt(1, invitationId);
+                    statement.setString(2, player.toString());
 
                     try (ResultSet result = statement.executeQuery()) {
                         if (!result.next()) {
@@ -510,8 +575,9 @@ public final class KingdomManager {
                     }
                 }
 
-                if (System.currentTimeMillis() > expiresAt) {
-                    deleteInvitations(connection, player);
+                // Hapus hanya undangan yang sudah kedaluwarsa.
+                if (System.currentTimeMillis() >= expiresAt) {
+                    deleteInvitation(connection, invitationId, player);
                     connection.commit();
                     return false;
                 }
@@ -524,7 +590,7 @@ public final class KingdomManager {
                 String playerName = plugin.getServer()
                         .getOfflinePlayer(player).getName();
 
-                if (playerName == null) {
+                if (playerName == null || playerName.isBlank()) {
                     playerName = "Unknown";
                 }
 
@@ -546,6 +612,8 @@ public final class KingdomManager {
                     statement.executeUpdate();
                 }
 
+                // Setelah berhasil bergabung, hapus seluruh undangan
+                // lain karena pemain hanya boleh memiliki satu Kingdom.
                 deleteInvitations(connection, player);
 
                 connection.commit();
@@ -565,16 +633,38 @@ public final class KingdomManager {
         }
     }
 
-    public synchronized boolean denyInvitation(UUID player) {
+    // Kompatibilitas untuk pemanggil lama.
+    // Mengambil undangan aktif terbaru.
+    public synchronized boolean acceptInvitation(UUID player) {
+        List<Invitation> invitations = getInvitations(player);
+
+        if (invitations.isEmpty()) {
+            return false;
+        }
+
+        return acceptInvitation(player, invitations.get(0).id());
+    }
+
+    // Tolak hanya undangan berdasarkan ID.
+    public synchronized boolean denyInvitation(
+            UUID player,
+            int invitationId
+    ) {
+        if (player == null || invitationId <= 0) {
+            return false;
+        }
+
         try (PreparedStatement statement =
                      database.getConnection().prepareStatement(
                              """
                              DELETE FROM kingdom_invitations
-                             WHERE target_uuid = ?
+                             WHERE id = ?
+                             AND target_uuid = ?
                              """
                      )) {
 
-            statement.setString(1, player.toString());
+            statement.setInt(1, invitationId);
+            statement.setString(2, player.toString());
 
             return statement.executeUpdate() > 0;
 
@@ -582,6 +672,18 @@ public final class KingdomManager {
             logError("denyInvitation", exception);
             return false;
         }
+    }
+
+    // Kompatibilitas untuk pemanggil lama.
+    // Menolak undangan aktif terbaru saja.
+    public synchronized boolean denyInvitation(UUID player) {
+        List<Invitation> invitations = getInvitations(player);
+
+        if (invitations.isEmpty()) {
+            return false;
+        }
+
+        return denyInvitation(player, invitations.get(0).id());
     }
 
     // ==========================================
@@ -592,7 +694,8 @@ public final class KingdomManager {
             UUID actor,
             UUID target
     ) {
-        if (actor.equals(target)) {
+        if (actor == null || target == null ||
+                actor.equals(target)) {
             return false;
         }
 
@@ -624,7 +727,8 @@ public final class KingdomManager {
                      database.getConnection().prepareStatement(
                              """
                              DELETE FROM kingdom_members
-                             WHERE kingdom_id = ? AND player_uuid = ?
+                             WHERE kingdom_id = ?
+                             AND player_uuid = ?
                              """
                      )) {
 
@@ -648,7 +752,9 @@ public final class KingdomManager {
             UUID target,
             Role newRole
     ) {
-        if (actor.equals(target) ||
+        if (actor == null || target == null ||
+                actor.equals(target) ||
+                newRole == null ||
                 newRole == Role.OWNER) {
             return false;
         }
@@ -667,19 +773,26 @@ public final class KingdomManager {
             return false;
         }
 
-        if (actorData.getRole() != Role.OWNER &&
-                actorData.getRole() != Role.LEADER) {
+        Role actorRole = actorData.getRole();
+        Role targetRole = targetData.getRole();
+
+        if (actorRole != Role.OWNER &&
+                actorRole != Role.LEADER) {
             return false;
         }
 
-        if (targetData.getRole() == Role.OWNER ||
-                targetData.getRole() == Role.LEADER) {
+        if (targetRole == Role.OWNER ||
+                targetRole == Role.LEADER) {
             return false;
         }
 
-        if (actorData.getRole() == Role.LEADER &&
-                newRole != Role.MEMBER) {
-            return false;
+        // Leader hanya boleh mengatur MEMBER menjadi OFFICER.
+        // Hanya OWNER yang dapat memberikan jabatan LEADER.
+        if (actorRole == Role.LEADER) {
+            if (targetRole != Role.MEMBER ||
+                    newRole != Role.OFFICER) {
+                return false;
+            }
         }
 
         try (PreparedStatement statement =
@@ -714,11 +827,24 @@ public final class KingdomManager {
             return false;
         }
 
-        Role next = switch (member.get().getRole()) {
-            case MEMBER -> Role.OFFICER;
-            case OFFICER -> Role.LEADER;
-            default -> null;
-        };
+        Optional<KingdomMember> actorMember = getMember(actor);
+
+        if (actorMember.isEmpty()) {
+            return false;
+        }
+
+        Role next;
+
+        if (actorMember.get().getRole() == Role.LEADER) {
+            next = member.get().getRole() == Role.MEMBER
+                    ? Role.OFFICER : null;
+        } else {
+            next = switch (member.get().getRole()) {
+                case MEMBER -> Role.OFFICER;
+                case OFFICER -> Role.LEADER;
+                default -> null;
+            };
+        }
 
         return next != null && setRole(actor, target, next);
     }
@@ -750,7 +876,8 @@ public final class KingdomManager {
             UUID owner,
             UUID target
     ) {
-        if (owner.equals(target)) {
+        if (owner == null || target == null ||
+                owner.equals(target)) {
             return false;
         }
 
@@ -791,7 +918,12 @@ public final class KingdomManager {
 
                     statement.setInt(1, kingdom.getId());
                     statement.setString(2, owner.toString());
-                    statement.executeUpdate();
+
+                    if (statement.executeUpdate() <= 0) {
+                        throw new SQLException(
+                                "Current owner member not found."
+                        );
+                    }
                 }
 
                 try (PreparedStatement statement =
@@ -827,7 +959,11 @@ public final class KingdomManager {
                     statement.setLong(2, System.currentTimeMillis());
                     statement.setInt(3, kingdom.getId());
 
-                    statement.executeUpdate();
+                    if (statement.executeUpdate() <= 0) {
+                        throw new SQLException(
+                                "Kingdom owner could not be updated."
+                        );
+                    }
                 }
 
                 connection.commit();
@@ -916,6 +1052,27 @@ public final class KingdomManager {
     // ==========================================
     // INTERNAL HELPERS
     // ==========================================
+
+    private void deleteInvitation(
+            Connection connection,
+            int invitationId,
+            UUID player
+    ) throws SQLException {
+
+        try (PreparedStatement statement =
+                     connection.prepareStatement(
+                             """
+                             DELETE FROM kingdom_invitations
+                             WHERE id = ?
+                             AND target_uuid = ?
+                             """
+                     )) {
+
+            statement.setInt(1, invitationId);
+            statement.setString(2, player.toString());
+            statement.executeUpdate();
+        }
+    }
 
     private void deleteInvitations(
             Connection connection,
