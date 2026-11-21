@@ -68,7 +68,11 @@ public final class VortexKingdom extends JavaPlugin {
             featureGUIManager = new KingdomFeatureGUIManager(this);
 
             getServer().getPluginManager().registerEvents(
-                    new KingdomGUIListener(this, guiManager, featureGUIManager),
+                    new KingdomGUIListener(
+                            this,
+                            guiManager,
+                            featureGUIManager
+                    ),
                     this
             );
 
@@ -83,7 +87,7 @@ public final class VortexKingdom extends JavaPlugin {
             );
 
             getServer().getPluginManager().registerEvents(
-                    new KingdomFeatureListener(this, featureGUIManager),
+                    new KingdomFeatureListener(this),
                     this
             );
 
