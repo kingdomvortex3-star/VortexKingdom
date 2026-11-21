@@ -26,6 +26,10 @@ public final class KingdomManager {
         this.database = database;
     }
 
+    // ==========================================
+    // CREATE KINGDOM
+    // ==========================================
+
     public synchronized boolean createKingdom(
             UUID owner,
             String ownerName,
@@ -35,22 +39,22 @@ public final class KingdomManager {
             return false;
         }
 
-        if (getKingdomByPlayer(owner).isPresent()) {
+        if (getMember(owner).isPresent()) {
             return false;
         }
 
-        String name = kingdomName.trim();
+        Connection connection = database.getConnection();
 
         try {
-            Connection connection = database.getConnection();
-
             connection.setAutoCommit(false);
 
             try {
-                try (PreparedStatement check = connection.prepareStatement(
-                        "SELECT id FROM kingdoms WHERE name = ?"
-                )) {
-                    check.setString(1, name);
+                try (PreparedStatement check =
+                             connection.prepareStatement(
+                                     "SELECT id FROM kingdoms WHERE name = ?"
+                             )) {
+
+                    check.setString(1, kingdomName.trim());
 
                     try (ResultSet result = check.executeQuery()) {
                         if (result.next()) {
@@ -64,21 +68,25 @@ public final class KingdomManager {
 
                 int kingdomId;
 
-                try (PreparedStatement insert = connection.prepareStatement(
-                        """
-                        INSERT INTO kingdoms
-                        (name, owner_uuid, level, experience,
-                         total_experience, created_at)
-                        VALUES (?, ?, 1, 0, 0, ?)
-                        """,
-                        Statement.RETURN_GENERATED_KEYS
-                )) {
-                    insert.setString(1, name);
-                    insert.setString(2, owner.toString());
-                    insert.setLong(3, now);
-                    insert.executeUpdate();
+                try (PreparedStatement statement =
+                             connection.prepareStatement(
+                                     """
+                                     INSERT INTO kingdoms
+                                     (name, owner_uuid, level, experience,
+                                      total_experience, created_at, updated_at)
+                                     VALUES (?, ?, 1, 0, 0, ?, ?)
+                                     """,
+                                     Statement.RETURN_GENERATED_KEYS
+                             )) {
 
-                    try (ResultSet keys = insert.getGeneratedKeys()) {
+                    statement.setString(1, kingdomName.trim());
+                    statement.setString(2, owner.toString());
+                    statement.setLong(3, now);
+                    statement.setLong(4, now);
+
+                    statement.executeUpdate();
+
+                    try (ResultSet keys = statement.getGeneratedKeys()) {
                         if (!keys.next()) {
                             throw new SQLException(
                                     "Failed to generate kingdom ID."
@@ -89,18 +97,35 @@ public final class KingdomManager {
                     }
                 }
 
-                try (PreparedStatement member = connection.prepareStatement(
-                        """
-                        INSERT INTO kingdom_members
-                        (kingdom_id, player_uuid, player_name, role, joined_at)
-                        VALUES (?, ?, ?, 'OWNER', ?)
-                        """
-                )) {
-                    member.setInt(1, kingdomId);
-                    member.setString(2, owner.toString());
-                    member.setString(3, ownerName);
-                    member.setLong(4, now);
-                    member.executeUpdate();
+                try (PreparedStatement statement =
+                             connection.prepareStatement(
+                                     """
+                                     INSERT INTO kingdom_members
+                                     (kingdom_id, player_uuid, player_name,
+                                      role, joined_at)
+                                     VALUES (?, ?, ?, 'OWNER', ?)
+                                     """
+                             )) {
+
+                    statement.setInt(1, kingdomId);
+                    statement.setString(2, owner.toString());
+                    statement.setString(3, ownerName);
+                    statement.setLong(4, now);
+
+                    statement.executeUpdate();
+                }
+
+                try (PreparedStatement statement =
+                             connection.prepareStatement(
+                                     """
+                                     INSERT INTO kingdom_statistics
+                                     (kingdom_id)
+                                     VALUES (?)
+                                     """
+                             )) {
+
+                    statement.setInt(1, kingdomId);
+                    statement.executeUpdate();
                 }
 
                 connection.commit();
@@ -109,18 +134,20 @@ public final class KingdomManager {
             } catch (Exception exception) {
                 connection.rollback();
                 throw exception;
-
-            } finally {
-                connection.setAutoCommit(true);
             }
 
-        } catch (SQLException exception) {
-            plugin.getLogger().severe(
-                    "Failed to create kingdom: " + exception.getMessage()
-            );
+        } catch (Exception exception) {
+            logError("createKingdom", exception);
             return false;
+
+        } finally {
+            restoreAutoCommit(connection);
         }
     }
+
+    // ==========================================
+    // KINGDOM LOOKUP
+    // ==========================================
 
     public synchronized Optional<Kingdom> getKingdomByPlayer(
             UUID player
@@ -174,9 +201,7 @@ public final class KingdomManager {
         return Optional.empty();
     }
 
-    public synchronized Optional<Kingdom> getKingdomById(
-            int id
-    ) {
+    public synchronized Optional<Kingdom> getKingdomById(int id) {
         try (PreparedStatement statement =
                      database.getConnection().prepareStatement(
                              "SELECT * FROM kingdoms WHERE id = ?"
@@ -197,16 +222,20 @@ public final class KingdomManager {
         return Optional.empty();
     }
 
+    // ==========================================
+    // MEMBER LOOKUP
+    // ==========================================
+
     public synchronized Optional<KingdomMember> getMember(
             UUID player
     ) {
-        String sql = """
-                SELECT * FROM kingdom_members
-                WHERE player_uuid = ?
-                """;
-
         try (PreparedStatement statement =
-                     database.getConnection().prepareStatement(sql)) {
+                     database.getConnection().prepareStatement(
+                             """
+                             SELECT * FROM kingdom_members
+                             WHERE player_uuid = ?
+                             """
+                     )) {
 
             statement.setString(1, player.toString());
 
@@ -271,20 +300,17 @@ public final class KingdomManager {
             statement.setInt(1, kingdomId);
 
             try (ResultSet result = statement.executeQuery()) {
-                if (result.next()) {
-                    return result.getInt(1);
-                }
+                return result.next() ? result.getInt(1) : 0;
             }
 
         } catch (SQLException exception) {
             logError("getMemberCount", exception);
+            return 0;
         }
-
-        return 0;
     }
 
     public synchronized int getMaxMembers(int level) {
-        int startingCapacity = plugin.getConfig().getInt(
+        int starting = plugin.getConfig().getInt(
                 "kingdom.starting-capacity", 5
         );
 
@@ -292,9 +318,12 @@ public final class KingdomManager {
                 "kingdom.capacity-per-level", 1
         );
 
-        return startingCapacity +
-                Math.max(0, level - 1) * perLevel;
+        return starting + Math.max(0, level - 1) * perLevel;
     }
+
+    // ==========================================
+    // INVITATION
+    // ==========================================
 
     public synchronized boolean invitePlayer(
             UUID inviter,
@@ -327,7 +356,7 @@ public final class KingdomManager {
             return false;
         }
 
-        if (getKingdomByPlayer(target).isPresent()) {
+        if (getMember(target).isPresent()) {
             return false;
         }
 
@@ -336,35 +365,64 @@ public final class KingdomManager {
             return false;
         }
 
-        int expiration = plugin.getConfig().getInt(
-                "invitation.expiration-seconds", 120
+        int maxPending = plugin.getConfig().getInt(
+                "invitation.maximum-pending-invitations", 10
         );
 
-        long now = System.currentTimeMillis();
-        long expiresAt = now + expiration * 1000L;
+        try {
+            Connection connection = database.getConnection();
 
-        String sql = """
-                INSERT INTO kingdom_invitations
-                (kingdom_id, inviter_uuid, target_uuid,
-                 created_at, expires_at)
-                VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(kingdom_id, target_uuid)
-                DO UPDATE SET
-                    inviter_uuid = excluded.inviter_uuid,
-                    created_at = excluded.created_at,
-                    expires_at = excluded.expires_at
-                """;
+            try (PreparedStatement count =
+                         connection.prepareStatement(
+                                 """
+                                 SELECT COUNT(*) FROM kingdom_invitations
+                                 WHERE kingdom_id = ?
+                                 AND inviter_uuid = ?
+                                 AND expires_at > ?
+                                 """
+                         )) {
 
-        try (PreparedStatement statement =
-                     database.getConnection().prepareStatement(sql)) {
+                count.setInt(1, kingdom.getId());
+                count.setString(2, inviter.toString());
+                count.setLong(3, System.currentTimeMillis());
 
-            statement.setInt(1, kingdom.getId());
-            statement.setString(2, inviter.toString());
-            statement.setString(3, target.toString());
-            statement.setLong(4, now);
-            statement.setLong(5, expiresAt);
+                try (ResultSet result = count.executeQuery()) {
+                    if (result.next() &&
+                            result.getInt(1) >= maxPending) {
+                        return false;
+                    }
+                }
+            }
 
-            return statement.executeUpdate() > 0;
+            int expiration = plugin.getConfig().getInt(
+                    "invitation.expiration-seconds", 120
+            );
+
+            long now = System.currentTimeMillis();
+
+            try (PreparedStatement statement =
+                         connection.prepareStatement(
+                                 """
+                                 INSERT INTO kingdom_invitations
+                                 (kingdom_id, inviter_uuid, target_uuid,
+                                  created_at, expires_at)
+                                 VALUES (?, ?, ?, ?, ?)
+                                 ON CONFLICT(kingdom_id, target_uuid)
+                                 DO UPDATE SET
+                                    inviter_uuid = excluded.inviter_uuid,
+                                    created_at = excluded.created_at,
+                                    expires_at = excluded.expires_at
+                                 """
+                         )) {
+
+                statement.setInt(1, kingdom.getId());
+                statement.setString(2, inviter.toString());
+                statement.setString(3, target.toString());
+                statement.setLong(4, now);
+                statement.setLong(5, now + expiration * 1000L);
+
+                return statement.executeUpdate() > 0;
+            }
 
         } catch (SQLException exception) {
             logError("invitePlayer", exception);
@@ -372,33 +430,71 @@ public final class KingdomManager {
         }
     }
 
-    public synchronized boolean acceptInvitation(UUID player) {
+    public synchronized List<Invitation> getInvitations(UUID player) {
+        List<Invitation> invitations = new ArrayList<>();
+
         String sql = """
-                SELECT i.*, k.level
+                SELECT i.*, k.name AS kingdom_name
                 FROM kingdom_invitations i
                 JOIN kingdoms k ON i.kingdom_id = k.id
                 WHERE i.target_uuid = ?
+                AND i.expires_at > ?
                 ORDER BY i.created_at DESC
-                LIMIT 1
                 """;
 
-        try {
-            Connection connection = database.getConnection();
+        try (PreparedStatement statement =
+                     database.getConnection().prepareStatement(sql)) {
 
+            statement.setString(1, player.toString());
+            statement.setLong(2, System.currentTimeMillis());
+
+            try (ResultSet result = statement.executeQuery()) {
+                while (result.next()) {
+                    invitations.add(new Invitation(
+                            result.getInt("id"),
+                            result.getInt("kingdom_id"),
+                            result.getString("kingdom_name"),
+                            result.getString("inviter_uuid"),
+                            result.getLong("created_at"),
+                            result.getLong("expires_at")
+                    ));
+                }
+            }
+
+        } catch (SQLException exception) {
+            logError("getInvitations", exception);
+        }
+
+        return invitations;
+    }
+
+    public synchronized boolean acceptInvitation(UUID player) {
+        Connection connection = database.getConnection();
+
+        try {
             connection.setAutoCommit(false);
 
             try {
-                if (getKingdomByPlayer(player).isPresent()) {
+                if (getMember(player).isPresent()) {
                     connection.rollback();
                     return false;
                 }
 
                 int kingdomId;
-                long expiresAt;
                 int level;
+                long expiresAt;
 
                 try (PreparedStatement statement =
-                             connection.prepareStatement(sql)) {
+                             connection.prepareStatement(
+                                     """
+                                     SELECT i.kingdom_id, i.expires_at, k.level
+                                     FROM kingdom_invitations i
+                                     JOIN kingdoms k ON k.id = i.kingdom_id
+                                     WHERE i.target_uuid = ?
+                                     ORDER BY i.created_at DESC
+                                     LIMIT 1
+                                     """
+                             )) {
 
                     statement.setString(1, player.toString());
 
@@ -415,7 +511,7 @@ public final class KingdomManager {
                 }
 
                 if (System.currentTimeMillis() > expiresAt) {
-                    deleteInvitation(connection, player);
+                    deleteInvitations(connection, player);
                     connection.commit();
                     return false;
                 }
@@ -423,6 +519,13 @@ public final class KingdomManager {
                 if (getMemberCount(kingdomId) >= getMaxMembers(level)) {
                     connection.rollback();
                     return false;
+                }
+
+                String playerName = plugin.getServer()
+                        .getOfflinePlayer(player).getName();
+
+                if (playerName == null) {
+                    playerName = "Unknown";
                 }
 
                 try (PreparedStatement statement =
@@ -437,25 +540,13 @@ public final class KingdomManager {
 
                     statement.setInt(1, kingdomId);
                     statement.setString(2, player.toString());
-
-                    String name = plugin.getServer()
-                            .getOfflinePlayer(player)
-                            .getName();
-
-                    statement.setString(
-                            3,
-                            name == null ? "Unknown" : name
-                    );
-
-                    statement.setLong(
-                            4,
-                            System.currentTimeMillis()
-                    );
+                    statement.setString(3, playerName);
+                    statement.setLong(4, System.currentTimeMillis());
 
                     statement.executeUpdate();
                 }
 
-                deleteInvitation(connection, player);
+                deleteInvitations(connection, player);
 
                 connection.commit();
                 return true;
@@ -463,25 +554,25 @@ public final class KingdomManager {
             } catch (Exception exception) {
                 connection.rollback();
                 throw exception;
-
-            } finally {
-                connection.setAutoCommit(true);
             }
 
         } catch (Exception exception) {
             logError("acceptInvitation", exception);
             return false;
+
+        } finally {
+            restoreAutoCommit(connection);
         }
     }
 
     public synchronized boolean denyInvitation(UUID player) {
-        String sql = """
-                DELETE FROM kingdom_invitations
-                WHERE target_uuid = ?
-                """;
-
         try (PreparedStatement statement =
-                     database.getConnection().prepareStatement(sql)) {
+                     database.getConnection().prepareStatement(
+                             """
+                             DELETE FROM kingdom_invitations
+                             WHERE target_uuid = ?
+                             """
+                     )) {
 
             statement.setString(1, player.toString());
 
@@ -493,16 +584,277 @@ public final class KingdomManager {
         }
     }
 
-    public synchronized boolean leaveKingdom(UUID player) {
-        Optional<KingdomMember> optional = getMember(player);
+    // ==========================================
+    // KICK MEMBER
+    // ==========================================
+
+    public synchronized boolean kickMember(
+            UUID actor,
+            UUID target
+    ) {
+        if (actor.equals(target)) {
+            return false;
+        }
+
+        Optional<Kingdom> kingdom = getKingdomByPlayer(actor);
+
+        if (kingdom.isEmpty()) {
+            return false;
+        }
+
+        Optional<KingdomMember> actorMember = getMember(actor);
+        Optional<KingdomMember> targetMember = getMember(target);
+
+        if (actorMember.isEmpty() || targetMember.isEmpty()) {
+            return false;
+        }
+
+        KingdomMember actorData = actorMember.get();
+        KingdomMember targetData = targetMember.get();
+
+        if (actorData.getKingdomId() != targetData.getKingdomId()) {
+            return false;
+        }
+
+        if (!canManageRole(actorData.getRole(), targetData.getRole())) {
+            return false;
+        }
+
+        try (PreparedStatement statement =
+                     database.getConnection().prepareStatement(
+                             """
+                             DELETE FROM kingdom_members
+                             WHERE kingdom_id = ? AND player_uuid = ?
+                             """
+                     )) {
+
+            statement.setInt(1, kingdom.get().getId());
+            statement.setString(2, target.toString());
+
+            return statement.executeUpdate() > 0;
+
+        } catch (SQLException exception) {
+            logError("kickMember", exception);
+            return false;
+        }
+    }
+
+    // ==========================================
+    // PROMOTE / DEMOTE
+    // ==========================================
+
+    public synchronized boolean setRole(
+            UUID actor,
+            UUID target,
+            Role newRole
+    ) {
+        if (actor.equals(target) ||
+                newRole == Role.OWNER) {
+            return false;
+        }
+
+        Optional<KingdomMember> actorMember = getMember(actor);
+        Optional<KingdomMember> targetMember = getMember(target);
+
+        if (actorMember.isEmpty() || targetMember.isEmpty()) {
+            return false;
+        }
+
+        KingdomMember actorData = actorMember.get();
+        KingdomMember targetData = targetMember.get();
+
+        if (actorData.getKingdomId() != targetData.getKingdomId()) {
+            return false;
+        }
+
+        if (actorData.getRole() != Role.OWNER &&
+                actorData.getRole() != Role.LEADER) {
+            return false;
+        }
+
+        if (targetData.getRole() == Role.OWNER ||
+                targetData.getRole() == Role.LEADER) {
+            return false;
+        }
+
+        if (actorData.getRole() == Role.LEADER &&
+                newRole != Role.MEMBER) {
+            return false;
+        }
+
+        try (PreparedStatement statement =
+                     database.getConnection().prepareStatement(
+                             """
+                             UPDATE kingdom_members
+                             SET role = ?
+                             WHERE kingdom_id = ?
+                             AND player_uuid = ?
+                             """
+                     )) {
+
+            statement.setString(1, newRole.name());
+            statement.setInt(2, actorData.getKingdomId());
+            statement.setString(3, target.toString());
+
+            return statement.executeUpdate() > 0;
+
+        } catch (SQLException exception) {
+            logError("setRole", exception);
+            return false;
+        }
+    }
+
+    public synchronized boolean promoteMember(
+            UUID actor,
+            UUID target
+    ) {
+        Optional<KingdomMember> member = getMember(target);
+
+        if (member.isEmpty()) {
+            return false;
+        }
+
+        Role next = switch (member.get().getRole()) {
+            case MEMBER -> Role.OFFICER;
+            case OFFICER -> Role.LEADER;
+            default -> null;
+        };
+
+        return next != null && setRole(actor, target, next);
+    }
+
+    public synchronized boolean demoteMember(
+            UUID actor,
+            UUID target
+    ) {
+        Optional<KingdomMember> member = getMember(target);
+
+        if (member.isEmpty()) {
+            return false;
+        }
+
+        Role next = switch (member.get().getRole()) {
+            case LEADER -> Role.OFFICER;
+            case OFFICER -> Role.MEMBER;
+            default -> null;
+        };
+
+        return next != null && setRole(actor, target, next);
+    }
+
+    // ==========================================
+    // TRANSFER OWNERSHIP
+    // ==========================================
+
+    public synchronized boolean transferOwnership(
+            UUID owner,
+            UUID target
+    ) {
+        if (owner.equals(target)) {
+            return false;
+        }
+
+        Optional<Kingdom> optional = getKingdomByPlayer(owner);
 
         if (optional.isEmpty()) {
             return false;
         }
 
-        KingdomMember member = optional.get();
+        Kingdom kingdom = optional.get();
 
-        if (member.isOwner()) {
+        if (!kingdom.getOwnerUuid().equals(owner.toString())) {
+            return false;
+        }
+
+        Optional<KingdomMember> targetMember = getMember(target);
+
+        if (targetMember.isEmpty() ||
+                targetMember.get().getKingdomId() != kingdom.getId()) {
+            return false;
+        }
+
+        Connection connection = database.getConnection();
+
+        try {
+            connection.setAutoCommit(false);
+
+            try {
+                try (PreparedStatement statement =
+                             connection.prepareStatement(
+                                     """
+                                     UPDATE kingdom_members
+                                     SET role = 'LEADER'
+                                     WHERE kingdom_id = ?
+                                     AND player_uuid = ?
+                                     """
+                             )) {
+
+                    statement.setInt(1, kingdom.getId());
+                    statement.setString(2, owner.toString());
+                    statement.executeUpdate();
+                }
+
+                try (PreparedStatement statement =
+                             connection.prepareStatement(
+                                     """
+                                     UPDATE kingdom_members
+                                     SET role = 'OWNER'
+                                     WHERE kingdom_id = ?
+                                     AND player_uuid = ?
+                                     """
+                             )) {
+
+                    statement.setInt(1, kingdom.getId());
+                    statement.setString(2, target.toString());
+
+                    if (statement.executeUpdate() <= 0) {
+                        throw new SQLException(
+                                "Target member could not become owner."
+                        );
+                    }
+                }
+
+                try (PreparedStatement statement =
+                             connection.prepareStatement(
+                                     """
+                                     UPDATE kingdoms
+                                     SET owner_uuid = ?, updated_at = ?
+                                     WHERE id = ?
+                                     """
+                             )) {
+
+                    statement.setString(1, target.toString());
+                    statement.setLong(2, System.currentTimeMillis());
+                    statement.setInt(3, kingdom.getId());
+
+                    statement.executeUpdate();
+                }
+
+                connection.commit();
+                return true;
+
+            } catch (Exception exception) {
+                connection.rollback();
+                throw exception;
+            }
+
+        } catch (Exception exception) {
+            logError("transferOwnership", exception);
+            return false;
+
+        } finally {
+            restoreAutoCommit(connection);
+        }
+    }
+
+    // ==========================================
+    // LEAVE / DELETE
+    // ==========================================
+
+    public synchronized boolean leaveKingdom(UUID player) {
+        Optional<KingdomMember> optional = getMember(player);
+
+        if (optional.isEmpty() || optional.get().isOwner()) {
             return false;
         }
 
@@ -547,7 +899,25 @@ public final class KingdomManager {
         }
     }
 
-    private void deleteInvitation(
+    // ==========================================
+    // ROLE PERMISSION
+    // ==========================================
+
+    private boolean canManageRole(Role actor, Role target) {
+        return switch (actor) {
+            case OWNER -> target != Role.OWNER;
+            case LEADER ->
+                    target == Role.OFFICER || target == Role.MEMBER;
+            case OFFICER -> target == Role.MEMBER;
+            default -> false;
+        };
+    }
+
+    // ==========================================
+    // INTERNAL HELPERS
+    // ==========================================
+
+    private void deleteInvitations(
             Connection connection,
             UUID player
     ) throws SQLException {
@@ -613,10 +983,36 @@ public final class KingdomManager {
         );
     }
 
+    private void restoreAutoCommit(Connection connection) {
+        try {
+            if (connection != null && !connection.isClosed() &&
+                    !connection.getAutoCommit()) {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException exception) {
+            logError("restoreAutoCommit", exception);
+        }
+    }
+
     private void logError(String method, Exception exception) {
-        plugin.getLogger().severe(
-                "KingdomManager." + method + ": " +
-                        exception.getMessage()
+        plugin.getLogger().log(
+                java.util.logging.Level.SEVERE,
+                "KingdomManager." + method + " failed.",
+                exception
         );
+    }
+
+    // ==========================================
+    // INVITATION DATA
+    // ==========================================
+
+    public record Invitation(
+            int id,
+            int kingdomId,
+            String kingdomName,
+            String inviterUuid,
+            long createdAt,
+            long expiresAt
+    ) {
     }
 }
