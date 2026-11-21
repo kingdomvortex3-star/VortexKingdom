@@ -16,15 +16,15 @@ public final class KingdomFeatureEntryListener implements Listener {
     private final VortexKingdom plugin;
     private final KingdomFeatureGUIManager gui;
 
-    public KingdomFeatureEntryListener(
-            VortexKingdom plugin,
-            KingdomFeatureGUIManager gui
-    ) {
+    public KingdomFeatureEntryListener(VortexKingdom plugin) {
         this.plugin = plugin;
-        this.gui = gui;
+        this.gui = plugin.getFeatureGUIManager();
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    @EventHandler(
+            priority = EventPriority.MONITOR,
+            ignoreCancelled = false
+    )
     public void onMainMenuClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
@@ -44,19 +44,16 @@ public final class KingdomFeatureEntryListener implements Listener {
             return;
         }
 
-        int slot = event.getRawSlot();
-
         if (plugin.getKingdomManager()
                 .getKingdomByPlayer(player.getUniqueId()).isEmpty()) {
             return;
         }
 
-        if (slot == 16) {
-            event.setCancelled(true);
-            gui.openHome(player);
-        } else if (slot == 22) {
-            event.setCancelled(true);
-            gui.openSettings(player);
+        switch (event.getRawSlot()) {
+            case 16 -> gui.openHome(player);
+            case 22 -> gui.openSettings(player);
+            default -> {
+            }
         }
     }
 }
