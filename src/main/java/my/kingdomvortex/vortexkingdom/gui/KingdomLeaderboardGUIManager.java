@@ -2,7 +2,6 @@
 package my.kingdomvortex.vortexkingdom.gui;
 
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
-import my.kingdomvortex.vortexkingdom.manager.KingdomLeaderboardManager;
 import my.kingdomvortex.vortexkingdom.manager.KingdomLeaderboardManager.LeaderboardEntry;
 import my.kingdomvortex.vortexkingdom.manager.KingdomLeaderboardManager.LeaderboardType;
 
@@ -20,7 +19,6 @@ import java.util.UUID;
 
 public final class KingdomLeaderboardGUIManager {
 
-    private static final String PREFIX = "§8[§6VortexKingdom§8] §7";
     private static final int INVENTORY_SIZE = 54;
     private static final int ENTRIES_PER_PAGE = 28;
 
@@ -40,7 +38,7 @@ public final class KingdomLeaderboardGUIManager {
         }
 
         List<LeaderboardEntry> entries =
-                plugin.getLeaderboardManager().getTop(100, type);
+                plugin.getLeaderboardManager().getTop(type, 100);
 
         int maximumPage = Math.max(
                 0,
@@ -75,7 +73,7 @@ public final class KingdomLeaderboardGUIManager {
                 List.of()
         );
 
-        for (int slot = 0; slot < inventory.getSize(); slot++) {
+        for (int slot = 0; slot < INVENTORY_SIZE; slot++) {
             inventory.setItem(slot, background);
         }
 
@@ -163,10 +161,9 @@ public final class KingdomLeaderboardGUIManager {
 
         for (int index = start; index < end; index++) {
             LeaderboardEntry entry = entries.get(index);
-            int slot = slots[index - start];
 
             inventory.setItem(
-                    slot,
+                    slots[index - start],
                     createEntryItem(entry, type)
             );
         }
@@ -177,18 +174,17 @@ public final class KingdomLeaderboardGUIManager {
             LeaderboardType type
     ) {
         Material material = getRankMaterial(entry.position());
-
         ItemStack item = new ItemStack(material);
+
         ItemMeta meta = item.getItemMeta();
 
         if (meta == null) {
             return item;
         }
 
-        String rankColor = getRankColor(entry.position());
-
         meta.setDisplayName(
-                rankColor + "§l#" + entry.position()
+                getRankColor(entry.position())
+                        + "§l#" + entry.position()
                         + " §f" + entry.kingdomName()
         );
 
@@ -201,8 +197,8 @@ public final class KingdomLeaderboardGUIManager {
         lore.add("§7Members: §a" + entry.memberCount());
         lore.add("§7Total Kills: §c" + formatNumber(entry.totalKills()));
         lore.add("");
-        lore.add("§fScore: §6" + formatNumber(entry.score())
-                + " §7(" + getTypeName(type) + ")");
+        lore.add("§fScore: §6" + formatNumber(entry.score()));
+        lore.add("§7Kategori: §e" + getTypeName(type));
         lore.add("§8━━━━━━━━━━━━━━━━━━");
 
         if (entry.ownerUuid() != null) {
@@ -210,8 +206,12 @@ public final class KingdomLeaderboardGUIManager {
                 UUID ownerId = UUID.fromString(entry.ownerUuid());
                 OfflinePlayer owner = Bukkit.getOfflinePlayer(ownerId);
 
-                lore.add("§7Owner: §f" + owner.getName());
-            } catch (IllegalArgumentException ignored) {
+                lore.add("§7Owner: §f" + (
+                        owner.getName() == null
+                                ? "Unknown"
+                                : owner.getName()
+                ));
+            } catch (IllegalArgumentException exception) {
                 lore.add("§7Owner: §fUnknown");
             }
         }
@@ -222,11 +222,9 @@ public final class KingdomLeaderboardGUIManager {
                 && entry.ownerUuid() != null) {
             try {
                 UUID ownerId = UUID.fromString(entry.ownerUuid());
-                skullMeta.setOwningPlayer(
-                        Bukkit.getOfflinePlayer(ownerId)
-                );
+                skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer(ownerId));
             } catch (IllegalArgumentException ignored) {
-                // Tetap gunakan item ranking jika UUID tidak valid.
+                // Gunakan kepala default jika UUID tidak valid.
             }
         }
 
@@ -239,56 +237,46 @@ public final class KingdomLeaderboardGUIManager {
             int page,
             int maximumPage
     ) {
-        if (page > 0) {
-            inventory.setItem(
-                    45,
-                    createItem(
-                            Material.ARROW,
-                            "§e§lHALAMAN SEBELUMNYA",
-                            List.of("§7Klik untuk kembali ke halaman sebelumnya.")
-                    )
-            );
-        } else {
-            inventory.setItem(
-                    45,
-                    createItem(
-                            Material.GRAY_DYE,
-                            "§7Halaman Pertama",
-                            List.of("§8Tidak ada halaman sebelumnya.")
-                    )
-            );
-        }
+        inventory.setItem(
+                45,
+                createItem(
+                        page > 0 ? Material.ARROW : Material.GRAY_DYE,
+                        page > 0
+                                ? "§e§lHALAMAN SEBELUMNYA"
+                                : "§7Halaman Pertama",
+                        List.of(
+                                page > 0
+                                        ? "§7Klik untuk kembali."
+                                        : "§8Tidak ada halaman sebelumnya."
+                        )
+                )
+        );
 
         inventory.setItem(
                 49,
                 createItem(
                         Material.BARRIER,
                         "§c§lTUTUP LEADERBOARD",
-                        List.of(
-                                "§7Klik untuk menutup leaderboard."
-                        )
+                        List.of("§7Klik untuk menutup.")
                 )
         );
 
-        if (page < maximumPage) {
-            inventory.setItem(
-                    53,
-                    createItem(
-                            Material.ARROW,
-                            "§e§lHALAMAN SELANJUTNYA",
-                            List.of("§7Klik untuk melihat halaman berikutnya.")
-                    )
-            );
-        } else {
-            inventory.setItem(
-                    53,
-                    createItem(
-                            Material.GRAY_DYE,
-                            "§7Halaman Terakhir",
-                            List.of("§8Tidak ada halaman berikutnya.")
-                    )
-            );
-        }
+        inventory.setItem(
+                53,
+                createItem(
+                        page < maximumPage
+                                ? Material.ARROW
+                                : Material.GRAY_DYE,
+                        page < maximumPage
+                                ? "§e§lHALAMAN SELANJUTNYA"
+                                : "§7Halaman Terakhir",
+                        List.of(
+                                page < maximumPage
+                                        ? "§7Klik untuk melanjutkan."
+                                        : "§8Tidak ada halaman berikutnya."
+                        )
+                )
+        );
     }
 
     private ItemStack createItem(
