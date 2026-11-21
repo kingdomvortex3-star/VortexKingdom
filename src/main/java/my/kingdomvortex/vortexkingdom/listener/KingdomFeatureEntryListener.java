@@ -21,10 +21,7 @@ public final class KingdomFeatureEntryListener implements Listener {
         this.gui = plugin.getFeatureGUIManager();
     }
 
-    @EventHandler(
-            priority = EventPriority.MONITOR,
-            ignoreCancelled = false
-    )
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onMainMenuClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
@@ -50,8 +47,14 @@ public final class KingdomFeatureEntryListener implements Listener {
         }
 
         switch (event.getRawSlot()) {
-            case 16 -> gui.openHome(player);
-            case 22 -> gui.openSettings(player);
+            case 16 -> {
+                event.setCancelled(true);
+                gui.openHome(player);
+            }
+            case 22 -> {
+                event.setCancelled(true);
+                gui.openSettings(player);
+            }
             default -> {
             }
         }
