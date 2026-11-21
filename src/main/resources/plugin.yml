@@ -1,4 +1,3 @@
-
 name: VortexKingdom
 version: '${version}'
 main: my.kingdomvortex.vortexkingdom.VortexKingdom
@@ -19,7 +18,7 @@ commands:
 
 permissions:
   vortexkingdom.admin:
-    description: Access to all Kingdom administration commands
+    description: Access to Kingdom administration commands
     default: op
 
   vortexkingdom.use:
