@@ -10,6 +10,7 @@ import my.kingdomvortex.vortexkingdom.gui.KingdomLeaderboardGUIManager;
 import my.kingdomvortex.vortexkingdom.level.ExpRewardManager;
 import my.kingdomvortex.vortexkingdom.level.KingdomLevelManager;
 import my.kingdomvortex.vortexkingdom.listener.KingdomExpListener;
+import my.kingdomvortex.vortexkingdom.listener.KingdomFeatureEntryListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomFeatureListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomGUIListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomLeaderboardGUIListener;
@@ -33,10 +34,11 @@ public final class VortexKingdom extends JavaPlugin {
     private KingdomLevelManager levelManager;
     private ExpRewardManager expRewardManager;
     private KingdomLeaderboardManager leaderboardManager;
-    private KingdomFeatureManager featureManager;
 
     private KingdomGUIManager guiManager;
     private KingdomLeaderboardGUIManager leaderboardGUIManager;
+
+    private KingdomFeatureManager featureManager;
     private KingdomFeatureGUIManager featureGUIManager;
 
     private KingdomPlaceholder placeholder;
@@ -60,13 +62,11 @@ public final class VortexKingdom extends JavaPlugin {
             expRewardManager = new ExpRewardManager(this);
             leaderboardManager = new KingdomLeaderboardManager(this);
 
-            featureManager = new KingdomFeatureManager(this);
-
             guiManager = new KingdomGUIManager(this);
-            leaderboardGUIManager =
-                    new KingdomLeaderboardGUIManager(this);
-            featureGUIManager =
-                    new KingdomFeatureGUIManager(this);
+            leaderboardGUIManager = new KingdomLeaderboardGUIManager(this);
+
+            featureManager = new KingdomFeatureManager(this);
+            featureGUIManager = new KingdomFeatureGUIManager(this);
 
             getServer().getPluginManager().registerEvents(
                     new KingdomGUIListener(this, guiManager),
@@ -84,7 +84,12 @@ public final class VortexKingdom extends JavaPlugin {
             );
 
             getServer().getPluginManager().registerEvents(
-                    new KingdomFeatureListener(this, featureGUIManager),
+                    new KingdomFeatureListener(this),
+                    this
+            );
+
+            getServer().getPluginManager().registerEvents(
+                    new KingdomFeatureEntryListener(this),
                     this
             );
 
@@ -112,7 +117,8 @@ public final class VortexKingdom extends JavaPlugin {
         getLogger().info("EXP Reward Manager: Loaded");
         getLogger().info("Leaderboard Manager: Loaded");
         getLogger().info("Feature Manager: Loaded");
-        getLogger().info("GUI Managers: Loaded");
+        getLogger().info("GUI Manager: Loaded");
+        getLogger().info("Feature GUI Manager: Loaded");
         getLogger().info("Listeners: Registered");
         getLogger().info(
                 "PlaceholderAPI: "
@@ -211,16 +217,16 @@ public final class VortexKingdom extends JavaPlugin {
         return leaderboardManager;
     }
 
-    public KingdomFeatureManager getFeatureManager() {
-        return featureManager;
-    }
-
     public KingdomGUIManager getGuiManager() {
         return guiManager;
     }
 
     public KingdomLeaderboardGUIManager getLeaderboardGUIManager() {
         return leaderboardGUIManager;
+    }
+
+    public KingdomFeatureManager getFeatureManager() {
+        return featureManager;
     }
 
     public KingdomFeatureGUIManager getFeatureGUIManager() {
