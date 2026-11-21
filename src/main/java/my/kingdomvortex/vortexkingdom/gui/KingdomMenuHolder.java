@@ -1,3 +1,4 @@
+
 package my.kingdomvortex.vortexkingdom.gui;
 
 import org.bukkit.inventory.Inventory;
@@ -13,7 +14,12 @@ public final class KingdomMenuHolder implements InventoryHolder {
         INVITE_PLAYERS,
         MEMBER_ACTIONS,
         INVITATIONS,
-        CONFIRMATION
+        CONFIRMATION,
+
+        // New GUI menus
+        HOME,
+        SETTINGS,
+        DESCRIPTION
     }
 
     private final Menu menu;
