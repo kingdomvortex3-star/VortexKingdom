@@ -111,14 +111,6 @@ public final class KingdomLevelManager {
         );
     }
 
-    /**
-     * Menambahkan EXP ke Kingdom.
-     * Mendukung kenaikan beberapa level sekaligus.
-     * Sisa EXP akan dibawa ke level berikutnya.
-     *
-     * Method ini tidak melakukan commit sendiri.
-     * Transaksi dapat dikelola oleh ExpRewardManager.
-     */
     public boolean addExp(UUID player, long amount) {
         if (player == null || amount <= 0) {
             return false;
@@ -143,7 +135,7 @@ public final class KingdomLevelManager {
                 SET level = ?,
                     experience = ?,
                     total_experience = ?,
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = ?
                 WHERE id = ?
                   AND level = ?
                   AND experience = ?
@@ -251,10 +243,11 @@ public final class KingdomLevelManager {
                     statement.setInt(1, newLevel);
                     statement.setLong(2, newExp);
                     statement.setLong(3, newTotalExp);
-                    statement.setInt(4, kingdom.getId());
-                    statement.setInt(5, oldLevel);
-                    statement.setLong(6, oldExp);
-                    statement.setLong(7, oldTotalExp);
+                    statement.setLong(4, System.currentTimeMillis());
+                    statement.setInt(5, kingdom.getId());
+                    statement.setInt(6, oldLevel);
+                    statement.setLong(7, oldExp);
+                    statement.setLong(8, oldTotalExp);
 
                     if (statement.executeUpdate() <= 0) {
                         return false;
@@ -293,7 +286,7 @@ public final class KingdomLevelManager {
         String sql = """
                 UPDATE kingdoms
                 SET experience = ?,
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = ?
                 WHERE id = ?
                   AND level < ?
                 """;
@@ -331,8 +324,9 @@ public final class KingdomLevelManager {
                              connection.prepareStatement(sql)) {
 
                     statement.setLong(1, amount);
-                    statement.setInt(2, kingdom.getId());
-                    statement.setInt(3, getMaxLevel());
+                    statement.setLong(2, System.currentTimeMillis());
+                    statement.setInt(3, kingdom.getId());
+                    statement.setInt(4, getMaxLevel());
 
                     return statement.executeUpdate() > 0;
                 }
@@ -364,7 +358,7 @@ public final class KingdomLevelManager {
                 UPDATE kingdoms
                 SET level = ?,
                     experience = 0,
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = ?
                 WHERE id = ?
                 """;
 
@@ -377,7 +371,8 @@ public final class KingdomLevelManager {
                              connection.prepareStatement(sql)) {
 
                     statement.setInt(1, level);
-                    statement.setInt(2, kingdom.getId());
+                    statement.setLong(2, System.currentTimeMillis());
+                    statement.setInt(3, kingdom.getId());
 
                     return statement.executeUpdate() > 0;
                 }
