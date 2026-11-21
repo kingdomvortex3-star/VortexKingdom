@@ -2,12 +2,14 @@
 package my.kingdomvortex.vortexkingdom.listener;
 
 import my.kingdomvortex.vortexkingdom.VortexKingdom;
+import my.kingdomvortex.vortexkingdom.feature.KingdomFeatureManager;
 import my.kingdomvortex.vortexkingdom.gui.KingdomFeatureGUIManager;
 import my.kingdomvortex.vortexkingdom.gui.KingdomFeatureMenuHolder;
 import my.kingdomvortex.vortexkingdom.kingdom.Kingdom;
 import my.kingdomvortex.vortexkingdom.kingdom.KingdomMember;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -23,187 +25,56 @@ import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.Inventory;
 
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class KingdomFeatureListener implements Listener {
 
     private static final String PREFIX = "§8[§6Kingdom§8] §7";
 
     private final VortexKingdom plugin;
+    private final KingdomFeatureManager features;
     private final KingdomFeatureGUIManager gui;
-
-    private final Set<UUID> kingdomChat =
-            ConcurrentHashMap.newKeySet();
 
     public KingdomFeatureListener(
             VortexKingdom plugin,
             KingdomFeatureGUIManager gui
     ) {
         this.plugin = plugin;
+        this.features = plugin.getFeatureManager();
         this.gui = gui;
     }
 
-    public boolean isChatEnabled(Player player) {
-        return kingdomChat.contains(player.getUniqueId());
-    }
-
-    public void toggleChat(Player player) {
-        Optional<Kingdom> kingdom =
-                plugin.getKingdomManager().getKingdomByPlayer(
-                        player.getUniqueId()
-                );
-
-        if (kingdom.isEmpty()) {
-            player.sendMessage(
-                    PREFIX + "§cKamu belum memiliki Kingdom."
-            );
-            return;
-        }
-
-        if (!kingdomChat.add(player.getUniqueId())) {
-            kingdomChat.remove(player.getUniqueId());
-            player.sendMessage(
-                    PREFIX + "§cKingdom Chat dinonaktifkan."
-            );
-        } else {
-            player.sendMessage(
-                    PREFIX + "§aKingdom Chat diaktifkan."
-            );
-        }
-
-        player.playSound(
-                player.getLocation(),
-                Sound.UI_BUTTON_CLICK,
-                1f,
-                1.2f
-        );
-
-        gui.openSettings(player);
-    }
-
     // ==================================================
-    // FEATURE GUI
+    // INVENTORY CLICK
     // ==================================================
 
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void onFeatureInventoryClick(InventoryClickEvent event) {
+    public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
 
-        Inventory top = event.getView().getTopInventory();
+        Inventory inventory = event.getView().getTopInventory();
 
-        if (!(top.getHolder() instanceof KingdomFeatureMenuHolder holder)) {
+        if (!(inventory.getHolder()
+                instanceof KingdomFeatureMenuHolder holder)) {
             return;
         }
 
         event.setCancelled(true);
 
-        if (event.getClickedInventory() != top) {
+        if (event.getClickedInventory() != inventory) {
             return;
         }
 
         int slot = event.getRawSlot();
 
-        if (holder.getMenu()
-                == KingdomFeatureMenuHolder.Menu.DESCRIPTION_INPUT
-                || holder.getMenu()
-                == KingdomFeatureMenuHolder.Menu.CREATE_KINGDOM_INPUT) {
-
-            if (slot != 2 || !(top instanceof AnvilInventory anvil)) {
-                return;
-            }
-
-            String text = anvil.getRenameText();
-
-            if (text == null || text.isBlank()) {
-                player.sendMessage(
-                        PREFIX + "§cInput tidak boleh kosong."
-                );
-                return;
-            }
-
-            player.closeInventory();
-
-            if (holder.getMenu()
-                    == KingdomFeatureMenuHolder.Menu.CREATE_KINGDOM_INPUT) {
-
-                boolean created =
-                        plugin.getKingdomManager().createKingdom(
-                                player.getUniqueId(),
-                                player.getName(),
-                                text.trim()
-                        );
-
-                player.sendMessage(
-                        created
-                                ? PREFIX + "§aKingdom §6" + text.trim()
-                                    + " §aberhasil dibuat!"
-                                : PREFIX + "§cNama Kingdom tidak valid "
-                                    + "atau gagal dibuat."
-                );
-
-                if (created) {
-                    Bukkit.getScheduler().runTask(
-                            plugin,
-                            () -> plugin.getGuiManager().openMain(player)
-                    );
-                }
-
-                return;
-            }
-
-            int max = Math.max(
-                    16,
-                    plugin.getConfig().getInt(
-                            "kingdom.maximum-description-length",
-                            120
-                    )
-            );
-
-            if (text.length() > max) {
-                player.sendMessage(
-                        PREFIX + "§cDeskripsi maksimal "
-                                + max + " karakter."
-                );
-
-                Bukkit.getScheduler().runTask(
-                        plugin,
-                        () -> gui.openDescriptionInput(player)
-                );
-
-                return;
-            }
-
-            boolean updated =
-                    plugin.getFeatureManager().setDescription(
-                            player,
-                            text
-                    );
-
-            player.sendMessage(
-                    updated
-                            ? PREFIX + "§aDeskripsi Kingdom berhasil diperbarui."
-                            : PREFIX + "§cGagal memperbarui deskripsi."
-            );
-
-            Bukkit.getScheduler().runTask(
-                    plugin,
-                    () -> gui.openSettings(player)
-            );
-
-            return;
-        }
-
         switch (holder.getMenu()) {
             case HOME -> handleHome(player, slot);
             case SETTINGS -> handleSettings(player, slot);
-            case HOME_CONFIRMATION ->
-                    handleHomeConfirmation(player, slot);
-            case DESCRIPTION_INPUT, CREATE_KINGDOM_INPUT -> {
-            }
+            case HOME_CONFIRMATION -> handleHomeConfirmation(player, slot);
+            case DESCRIPTION_INPUT -> handleDescriptionInput(player, inventory, slot);
+            case CREATE_KINGDOM_INPUT -> handleCreateKingdom(player, inventory, slot);
         }
     }
 
@@ -214,17 +85,12 @@ public final class KingdomFeatureListener implements Listener {
     private void handleHome(Player player, int slot) {
         switch (slot) {
             case 20 -> {
-                if (!plugin.getFeatureManager().canManage(
-                        player.getUniqueId())) {
-                    player.sendMessage(
-                            PREFIX + "§cHanya Owner, Leader, atau Officer "
-                                    + "yang dapat mengatur Home."
-                    );
+                if (!features.canManage(player.getUniqueId())) {
+                    deny(player);
                     return;
                 }
 
-                boolean saved =
-                        plugin.getFeatureManager().setHome(player);
+                boolean saved = features.setHome(player);
 
                 player.sendMessage(
                         saved
@@ -236,15 +102,12 @@ public final class KingdomFeatureListener implements Listener {
             }
 
             case 22 -> {
-                Optional<org.bukkit.Location> home =
-                        plugin.getFeatureManager().getHome(
-                                player.getUniqueId()
-                        );
+                Optional<Location> home =
+                        features.getHome(player.getUniqueId());
 
                 if (home.isEmpty()) {
                     player.sendMessage(
-                            PREFIX + "§cKingdom belum memiliki Home "
-                                    + "atau world tidak tersedia."
+                            PREFIX + "§cKingdom belum memiliki Home."
                     );
                     return;
                 }
@@ -253,30 +116,24 @@ public final class KingdomFeatureListener implements Listener {
 
                 player.teleportAsync(home.get()).thenAccept(success ->
                         Bukkit.getScheduler().runTask(plugin, () -> {
-                            if (player.isOnline()) {
-                                player.sendMessage(
-                                        success
-                                                ? PREFIX + "§aBerhasil teleport "
-                                                    + "ke Kingdom Home."
-                                                : PREFIX + "§cTeleport gagal."
-                                );
-                            }
+                            if (!player.isOnline()) return;
+
+                            player.sendMessage(
+                                    success
+                                            ? PREFIX + "§aBerhasil teleport ke Kingdom Home."
+                                            : PREFIX + "§cTeleport gagal."
+                            );
                         })
                 );
             }
 
             case 24 -> {
-                if (!plugin.getFeatureManager().canManage(
-                        player.getUniqueId())) {
-                    player.sendMessage(
-                            PREFIX + "§cKamu tidak memiliki izin "
-                                    + "menghapus Home."
-                    );
+                if (!features.canManage(player.getUniqueId())) {
+                    deny(player);
                     return;
                 }
 
-                if (plugin.getFeatureManager().getHome(
-                        player.getUniqueId()).isEmpty()) {
+                if (features.getHome(player.getUniqueId()).isEmpty()) {
                     player.sendMessage(
                             PREFIX + "§cKingdom belum memiliki Home."
                     );
@@ -286,7 +143,7 @@ public final class KingdomFeatureListener implements Listener {
                 gui.openHomeDeleteConfirmation(player);
             }
 
-            case 49 -> plugin.getGuiManager().openMain(player);
+            case 49 -> plugin.getGuiManager().openMainMenu(player);
         }
     }
 
@@ -297,52 +154,76 @@ public final class KingdomFeatureListener implements Listener {
     private void handleSettings(Player player, int slot) {
         switch (slot) {
             case 20 -> {
-                if (!plugin.getFeatureManager().canManage(
-                        player.getUniqueId())) {
-                    player.sendMessage(
-                            PREFIX + "§cHanya Owner, Leader, atau Officer "
-                                    + "yang dapat mengubah PvP."
-                    );
+                if (!features.canManage(player.getUniqueId())) {
+                    deny(player);
                     return;
                 }
 
-                Optional<Kingdom> kingdom =
+                Optional<Kingdom> optional =
                         plugin.getKingdomManager().getKingdomByPlayer(
                                 player.getUniqueId()
                         );
 
-                if (kingdom.isEmpty()) {
-                    return;
-                }
+                if (optional.isEmpty()) return;
 
-                boolean newState = !kingdom.get().isPvpEnabled();
+                boolean enabled = !optional.get().isPvpEnabled();
 
-                boolean updated =
-                        plugin.getFeatureManager().setPvp(
-                                player,
-                                newState
-                        );
+                boolean updated = features.setPvp(player, enabled);
 
                 player.sendMessage(
                         updated
-                                ? PREFIX + "§aKingdom PvP sekarang "
-                                    + (newState ? "§aON" : "§cOFF") + "§a."
-                                : PREFIX + "§cGagal mengubah pengaturan PvP."
+                                ? PREFIX + "§aKingdom PvP: "
+                                    + (enabled ? "§aON" : "§cOFF")
+                                : PREFIX + "§cGagal mengubah PvP."
                 );
 
                 gui.openSettings(player);
             }
 
-            case 22 -> gui.openDescriptionInput(player);
+            case 22 -> {
+                if (!features.canManage(player.getUniqueId())) {
+                    deny(player);
+                    return;
+                }
 
-            case 24 -> toggleChat(player);
+                gui.openDescriptionInput(player);
+            }
 
-            case 49 -> plugin.getGuiManager().openProfile(player);
+            case 24 -> {
+                if (!features.canManage(player.getUniqueId())) {
+                    deny(player);
+                    return;
+                }
+
+                Optional<Kingdom> optional =
+                        plugin.getKingdomManager().getKingdomByPlayer(
+                                player.getUniqueId()
+                        );
+
+                if (optional.isEmpty()) return;
+
+                boolean enabled = !features.isChatEnabled(
+                        optional.get().getId()
+                );
+
+                boolean updated = features.setChatEnabled(player, enabled);
+
+                player.sendMessage(
+                        updated
+                                ? PREFIX + "§aKingdom Chat: "
+                                    + (enabled ? "§aON" : "§cOFF")
+                                : PREFIX + "§cGagal mengubah Kingdom Chat."
+                );
+
+                gui.openSettings(player);
+            }
+
+            case 49 -> plugin.getGuiManager().openMainMenu(player);
         }
     }
 
     // ==================================================
-    // HOME DELETE CONFIRMATION
+    // HOME CONFIRMATION
     // ==================================================
 
     private void handleHomeConfirmation(Player player, int slot) {
@@ -352,8 +233,7 @@ public final class KingdomFeatureListener implements Listener {
         }
 
         if (slot == 15) {
-            boolean deleted =
-                    plugin.getFeatureManager().deleteHome(player);
+            boolean deleted = features.deleteHome(player);
 
             player.sendMessage(
                     deleted
@@ -362,6 +242,96 @@ public final class KingdomFeatureListener implements Listener {
             );
 
             gui.openHome(player);
+        }
+    }
+
+    // ==================================================
+    // DESCRIPTION INPUT
+    // ==================================================
+
+    private void handleDescriptionInput(
+            Player player,
+            Inventory inventory,
+            int slot
+    ) {
+        if (slot != 2 || !(inventory instanceof AnvilInventory anvil)) {
+            return;
+        }
+
+        String description = anvil.getRenameText();
+
+        if (description == null || description.isBlank()) {
+            player.sendMessage(PREFIX + "§cDeskripsi tidak boleh kosong.");
+            return;
+        }
+
+        int maxLength = Math.max(
+                16,
+                plugin.getConfig().getInt(
+                        "kingdom.maximum-description-length",
+                        120
+                )
+        );
+
+        if (description.length() > maxLength) {
+            player.sendMessage(
+                    PREFIX + "§cDeskripsi maksimal "
+                            + maxLength + " karakter."
+            );
+            return;
+        }
+
+        boolean updated = features.setDescription(player, description);
+
+        player.closeInventory();
+
+        player.sendMessage(
+                updated
+                        ? PREFIX + "§aDeskripsi Kingdom berhasil diperbarui."
+                        : PREFIX + "§cGagal memperbarui deskripsi."
+        );
+
+        gui.openSettings(player);
+    }
+
+    // ==================================================
+    // CREATE KINGDOM INPUT
+    // ==================================================
+
+    private void handleCreateKingdom(
+            Player player,
+            Inventory inventory,
+            int slot
+    ) {
+        if (slot != 2 || !(inventory instanceof AnvilInventory anvil)) {
+            return;
+        }
+
+        String name = anvil.getRenameText();
+
+        if (name == null || name.isBlank()) {
+            player.sendMessage(PREFIX + "§cNama Kingdom tidak boleh kosong.");
+            return;
+        }
+
+        boolean created = plugin.getKingdomManager().createKingdom(
+                player.getUniqueId(),
+                player.getName(),
+                name.trim()
+        );
+
+        player.closeInventory();
+
+        player.sendMessage(
+                created
+                        ? PREFIX + "§aKingdom §6" + name.trim()
+                            + " §aberhasil dibuat!"
+                        : PREFIX + "§cGagal membuat Kingdom. "
+                            + "Periksa nama atau status keanggotaanmu."
+        );
+
+        if (created) {
+            gui.openMainMenu(player);
         }
     }
 
@@ -387,9 +357,7 @@ public final class KingdomFeatureListener implements Listener {
             attacker = shooter;
         }
 
-        if (attacker == null) {
-            return;
-        }
+        if (attacker == null) return;
 
         Optional<Kingdom> victimKingdom =
                 plugin.getKingdomManager().getKingdomByPlayer(
@@ -406,11 +374,12 @@ public final class KingdomFeatureListener implements Listener {
         }
 
         if (victimKingdom.get().getId()
-                == attackerKingdom.get().getId()
-                && !victimKingdom.get().isPvpEnabled()) {
+                != attackerKingdom.get().getId()) {
+            return;
+        }
 
+        if (!features.isPvpEnabled(victimKingdom.get().getId())) {
             event.setCancelled(true);
-
             attacker.sendMessage(
                     PREFIX + "§cPvP Kingdom sedang dinonaktifkan."
             );
@@ -425,45 +394,36 @@ public final class KingdomFeatureListener implements Listener {
     public void onKingdomChat(AsyncPlayerChatEvent event) {
         Player sender = event.getPlayer();
 
-        if (!kingdomChat.contains(sender.getUniqueId())) {
-            return;
-        }
+        Optional<Kingdom> optional =
+                plugin.getKingdomManager().getKingdomByPlayer(
+                        sender.getUniqueId()
+                );
+
+        if (optional.isEmpty()) return;
+
+        Kingdom kingdom = optional.get();
+
+        if (!features.isChatEnabled(kingdom.getId())) return;
 
         event.setCancelled(true);
 
         String message = event.getMessage();
 
         Bukkit.getScheduler().runTask(plugin, () -> {
-            Optional<Kingdom> kingdom =
-                    plugin.getKingdomManager().getKingdomByPlayer(
-                            sender.getUniqueId()
-                    );
-
-            if (kingdom.isEmpty()) {
-                kingdomChat.remove(sender.getUniqueId());
-
-                if (sender.isOnline()) {
-                    sender.sendMessage(
-                            PREFIX + "§cKamu tidak lagi memiliki Kingdom."
-                    );
-                }
-
-                return;
-            }
-
-            String formatted =
-                    "§8[§6K§8] §e" + sender.getName()
-                            + " §8» §f" + message;
-
             for (KingdomMember member :
-                    plugin.getKingdomManager().getMembers(
-                            kingdom.get().getId())) {
+                    plugin.getKingdomManager().getMembers(kingdom.getId())) {
 
-                Player recipient =
-                        Bukkit.getPlayer(member.getPlayerUniqueId());
+                UUID uuid = member.getPlayerUniqueId();
+
+                if (uuid == null) continue;
+
+                Player recipient = Bukkit.getPlayer(uuid);
 
                 if (recipient != null && recipient.isOnline()) {
-                    recipient.sendMessage(formatted);
+                    recipient.sendMessage(
+                            "§8[§6K§8] §e" + sender.getName()
+                                    + " §8» §f" + message
+                    );
                 }
             }
         });
@@ -474,19 +434,23 @@ public final class KingdomFeatureListener implements Listener {
     // ==================================================
 
     @EventHandler
-    public void onFeatureInventoryDrag(InventoryDragEvent event) {
+    public void onInventoryDrag(InventoryDragEvent event) {
         if (event.getView().getTopInventory().getHolder()
                 instanceof KingdomFeatureMenuHolder) {
             event.setCancelled(true);
         }
     }
 
-    // ==================================================
-    // PLAYER QUIT
-    // ==================================================
+    private void deny(Player player) {
+        player.sendMessage(
+                PREFIX + "§cKamu tidak memiliki izin untuk melakukan ini."
+        );
 
-    @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
-        kingdomChat.remove(event.getPlayer().getUniqueId());
+        player.playSound(
+                player.getLocation(),
+                Sound.ENTITY_VILLAGER_NO,
+                1f,
+                1f
+        );
     }
 }
