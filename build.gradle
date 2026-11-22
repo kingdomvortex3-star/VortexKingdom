@@ -1,3 +1,4 @@
+
 plugins {
     id 'java'
     id 'com.gradleup.shadow' version '9.2.2'
@@ -14,8 +15,8 @@ repositories {
     mavenCentral()
 
     maven {
-        name = 'papermc'
-        url = 'https://repo.papermc.io/repository/maven-public/'
+        name = 'purpur'
+        url = 'https://repo.purpurmc.org/snapshots'
     }
 
     maven {
@@ -25,7 +26,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'io.papermc.paper:paper-api:26.3.build.2654-stable'
+    compileOnly 'org.purpurmc.purpur:purpur-api:26.3.build.2654-stable'
     compileOnly 'me.clip:placeholderapi:2.11.6'
 
     implementation 'org.xerial:sqlite-jdbc:3.50.3.0'
