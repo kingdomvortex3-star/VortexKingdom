@@ -312,7 +312,7 @@ public final class KingdomFeatureListener implements Listener {
         );
 
         if (created) {
-            gui.openMainMenu(player);
+            plugin.getGuiManager().openMainMenu(player);
         }
     }
 
