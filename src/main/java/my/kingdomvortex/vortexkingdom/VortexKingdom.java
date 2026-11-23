@@ -1,3 +1,4 @@
+
 package my.kingdomvortex.vortexkingdom;
 
 import my.kingdomvortex.vortexkingdom.command.KingdomCommand;
@@ -13,6 +14,7 @@ import my.kingdomvortex.vortexkingdom.listener.KingdomFeatureEntryListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomFeatureListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomGUIListener;
 import my.kingdomvortex.vortexkingdom.listener.KingdomLeaderboardGUIListener;
+import my.kingdomvortex.vortexkingdom.listener.DiscordWebhookListener;
 import my.kingdomvortex.vortexkingdom.manager.KingdomLeaderboardManager;
 import my.kingdomvortex.vortexkingdom.manager.KingdomManager;
 import my.kingdomvortex.vortexkingdom.placeholder.KingdomPlaceholder;
@@ -111,6 +113,11 @@ public final class VortexKingdom extends JavaPlugin {
                 new KingdomFeatureEntryListener(this, featureGUIManager),
                 this
         );
+
+        getServer().getPluginManager().registerEvents(
+                new DiscordWebhookListener(this),
+                this
+        );
     }
 
     private void loadExpConfig() {
@@ -183,6 +190,7 @@ public final class VortexKingdom extends JavaPlugin {
                 "PlaceholderAPI: "
                         + (placeholder != null ? "Registered" : "Not Installed")
         );
+        getLogger().info("Discord Webhook Listener: Registered");
         getLogger().info("==================================");
     }
 
@@ -244,4 +252,4 @@ public final class VortexKingdom extends JavaPlugin {
     public FileConfiguration getExpConfig() {
         return expConfig;
     }
-    }
+}
