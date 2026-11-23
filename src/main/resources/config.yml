@@ -1,3 +1,4 @@
+
 settings:
   debug: false
   language: id
@@ -33,3 +34,22 @@ exp:
   daily-limit: 10000
   anti-farming: true
   cooldown-seconds: 3
+
+discord-webhook:
+  enabled: false
+  url: ""
+  username: "VortexKingdom"
+  avatar-url: ""
+  include-uuid: true
+
+  join:
+    enabled: true
+    title: "🟢 Player Joined"
+    description: "**{player}** has joined the server!"
+    color: 5763719
+
+  quit:
+    enabled: true
+    title: "🔴 Player Left"
+    description: "**{player}** has left the server!"
+    color: 15548997
