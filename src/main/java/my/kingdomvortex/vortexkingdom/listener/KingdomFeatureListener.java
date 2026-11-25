@@ -395,7 +395,7 @@ public final class KingdomFeatureListener implements Listener {
 
                 if (recipient != null && recipient.isOnline()) {
                     recipient.sendMessage(
-                            "§8[§6K§8] §e" + sender.getName()
+                            "§8[§6ᴋ§8] §e" + sender.getName()
                                     + " §8» §f" + message
                     );
                 }
